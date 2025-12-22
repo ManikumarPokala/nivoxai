@@ -13,18 +13,24 @@ from app.services.chat_strategy import generate_strategy_reply
 from app.services.rag import InfluencerDoc, search_influencers
 from app.services.recommender import compute_recommendations
 
-app = FastAPI(title="NivoxAI Backend AI Service")
+app = FastAPI(
+    title="NivoxAI Backend AI Service",
+    description="AI microservice for influencer recommendations, RAG search, and agentic strategy generation.",
+    version="0.2.0",
+)
 
 
 # --------- RAG MODELS ---------
 
 
 class RagQuery(BaseModel):
+    """Incoming query model for influencer RAG search."""
     query: str
     top_k: int = 5
 
 
 class RagInfluencerHit(BaseModel):
+    """Single RAG search hit for an influencer."""
     id: str
     name: str
     bio: str
@@ -42,12 +48,20 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    """
+    Request payload for the strategy / agentic chat endpoint.
+
+    - campaign: the campaign brief and targeting constraints
+    - recommendations: ranked influencers from the /recommend endpoint
+    - question: optional user question, e.g. “How should I phase this campaign?”
+    """
     campaign: Campaign
     recommendations: RecommendationResponse
     question: str | None = None
 
 
 class ChatResponse(BaseModel):
+    """LLM / agent reply as plain text."""
     reply: str
 
 
@@ -72,7 +86,8 @@ def recommend(request: RecommendationRequest) -> RecommendationResponse:
     Main recommendation endpoint.
 
     Delegates to app.services.recommender.compute_recommendations,
-    which can internally combine heuristic and ML-based scoring.
+    which can internally combine heuristic and ML-based scoring
+    for influencer–campaign fit.
     """
     return compute_recommendations(request)
 
@@ -82,6 +97,8 @@ def sample_recommendation() -> RecommendationResponse:
     """
     Convenience endpoint that returns a sample campaign +
     a small influencer set to demonstrate the ranking logic.
+
+    Useful for smoke tests and demos without needing frontend input.
     """
 
     campaign = Campaign(
@@ -90,7 +107,7 @@ def sample_recommendation() -> RecommendationResponse:
         goal="Launch a summer skincare line",
         target_region="Thailand",
         target_age_range="18-24",
-        budget=25000.0,
+        budget=25_000.0,
         description="Skincare and beauty focus for humid climates with glow routines.",
     )
 
@@ -179,8 +196,10 @@ def sample_recommendation() -> RecommendationResponse:
 @app.post("/rag/influencers", response_model=list[RagInfluencerHit])
 def rag_influencers(query: RagQuery) -> list[RagInfluencerHit]:
     """
-    RAG-style influencer search. Uses app.services.rag.search_influencers
-    to retrieve the most relevant influencer documents for a free-text query.
+    RAG-style influencer search.
+
+    Uses app.services.rag.search_influencers to retrieve the most relevant
+    influencer documents for a free-text query (e.g. “Thai skincare KOLs”).
     """
 
     results: list[tuple[InfluencerDoc, float]] = search_influencers(
@@ -210,7 +229,10 @@ def chat_strategy(req: ChatRequest) -> ChatResponse:
     Strategy endpoint.
 
     Delegates to app.services.chat_strategy.generate_strategy_reply,
-    which is a heuristic placeholder for a future LLM call.
+    which is implemented as an LLM-based, tool-using agent that:
+    - Reads the campaign brief and ranked influencers
+    - Optionally calls internal tools (e.g., recommendation summary)
+    - Produces a structured, actionable KOL campaign strategy.
     """
 
     reply = generate_strategy_reply(
