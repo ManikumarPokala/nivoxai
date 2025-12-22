@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: nivoxai-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: nivoxai
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./analytics.sql:/docker-entrypoint-initdb.d/analytics.sql:ro
+
+  backend-ai:
+    build: ./backend-ai
+    container_name: nivoxai-backend-ai
+    ports:
+      - "8000:8000"
+
+  backend-api:
+    build: ./backend-api
+    container_name: nivoxai-backend-api
+    depends_on:
+      - backend-ai
+      - postgres
+    environment:
+      PORT: 4000
+      AI_SERVICE_URL: http://backend-ai:8000
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: nivoxai
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build: ./frontend
+    container_name: nivoxai-frontend
+    depends_on:
+      - backend-api
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
