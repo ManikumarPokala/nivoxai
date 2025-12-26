@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-ai
+  namespace: nivoxai
+spec:
+  template:
+    spec:
+      containers:
+        - name: backend-ai
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/nivoxai-backend-ai:latest

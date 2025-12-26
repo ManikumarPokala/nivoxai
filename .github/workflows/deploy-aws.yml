@@ -1,0 +1,44 @@
+name: Deploy to AWS (ECR)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: <AWS_REGION>
+  AWS_ACCOUNT_ID: <AWS_ACCOUNT_ID>
+  ECR_REGISTRY: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push images
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          docker build -t ${ECR_REGISTRY}/nivoxai-backend-ai:${SHORT_SHA} -t ${ECR_REGISTRY}/nivoxai-backend-ai:latest ./backend-ai
+          docker build -t ${ECR_REGISTRY}/nivoxai-backend-api:${SHORT_SHA} -t ${ECR_REGISTRY}/nivoxai-backend-api:latest ./backend-api
+          docker build -t ${ECR_REGISTRY}/nivoxai-frontend:${SHORT_SHA} -t ${ECR_REGISTRY}/nivoxai-frontend:latest ./frontend
+          docker push ${ECR_REGISTRY}/nivoxai-backend-ai:${SHORT_SHA}
+          docker push ${ECR_REGISTRY}/nivoxai-backend-ai:latest
+          docker push ${ECR_REGISTRY}/nivoxai-backend-api:${SHORT_SHA}
+          docker push ${ECR_REGISTRY}/nivoxai-backend-api:latest
+          docker push ${ECR_REGISTRY}/nivoxai-frontend:${SHORT_SHA}
+          docker push ${ECR_REGISTRY}/nivoxai-frontend:latest

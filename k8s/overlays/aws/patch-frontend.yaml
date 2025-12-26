@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: nivoxai
+spec:
+  template:
+    spec:
+      containers:
+        - name: frontend
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/nivoxai-frontend:latest

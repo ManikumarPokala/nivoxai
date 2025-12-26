@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: nivoxai
+
+resources:
+  - ../../namespace.yaml
+  - ../../backend-ai.yaml
+  - ../../backend-api.yaml
+  - ../../frontend.yaml
+  - ./configmap.yaml
+  - ./secret.template.yaml
+  - ./ingress.yaml
+
+patchesStrategicMerge:
+  - ./patch-backend-ai.yaml
+  - ./patch-backend-api.yaml
+  - ./patch-frontend.yaml
+
+images:
+  - name: nivoxai-backend-ai
+    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/nivoxai-backend-ai
+    newTag: latest
+  - name: nivoxai-backend-api
+    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/nivoxai-backend-api
+    newTag: latest
+  - name: nivoxai-frontend
+    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/nivoxai-frontend
+    newTag: latest
