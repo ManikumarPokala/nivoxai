@@ -201,10 +201,21 @@ type CampaignItemPayload = CampaignInput | { campaign?: CampaignInput };
 type CampaignListPayload = CampaignInput[] | { campaigns?: CampaignInput[] };
 
 function normalizeCampaignItem(payload: CampaignItemPayload): CampaignInput {
-  if (hasCampaign(payload)) {
+  if ("campaign" in payload && payload.campaign) {
     return payload.campaign;
   }
-  return payload;
+  if (isCampaignInput(payload)) {
+    return payload;
+  }
+  return {
+    id: "camp-unknown",
+    brand_name: "Unknown Campaign",
+    goal: "Unknown goal",
+    target_region: "Unknown region",
+    target_age_range: "Unknown",
+    budget: 0,
+    description: "Campaign details unavailable.",
+  };
 }
 
 function normalizeCampaignList(payload: CampaignListPayload): CampaignInput[] {
@@ -214,13 +225,22 @@ function normalizeCampaignList(payload: CampaignListPayload): CampaignInput[] {
   return payload.campaigns ?? [];
 }
 
-function hasCampaign(payload: CampaignItemPayload): payload is { campaign: CampaignInput } {
+function isCampaignInput(payload: CampaignItemPayload): payload is CampaignInput {
   return (
-    typeof payload === "object" &&
-    payload !== null &&
-    "campaign" in payload &&
-    typeof (payload as { campaign?: CampaignInput }).campaign === "object" &&
-    (payload as { campaign?: CampaignInput }).campaign !== null
+    "id" in payload &&
+    typeof payload.id === "string" &&
+    "brand_name" in payload &&
+    typeof payload.brand_name === "string" &&
+    "goal" in payload &&
+    typeof payload.goal === "string" &&
+    "target_region" in payload &&
+    typeof payload.target_region === "string" &&
+    "target_age_range" in payload &&
+    typeof payload.target_age_range === "string" &&
+    "description" in payload &&
+    typeof payload.description === "string" &&
+    "budget" in payload &&
+    typeof payload.budget === "number"
   );
 }
 
