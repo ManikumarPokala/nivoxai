@@ -25,6 +25,8 @@ The frontend uses Next.js Route Handlers under `/api/*` to proxy to the services
 
 Environment variables (with defaults):
 
+- `NEXT_PUBLIC_API_BASE_URL` (default: `/api`)
+- `NEXT_PUBLIC_AI_BASE_URL` (default: `/ai`)
 - `BACKEND_API_BASE_URL` (default: `http://backend-api:4000`)
 - `BACKEND_AI_BASE_URL` (default: `http://backend-ai:8000`)
 
