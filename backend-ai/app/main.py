@@ -76,6 +76,16 @@ def health_check() -> dict:
     """
     return {"status": "ok"}
 
+@app.get("/model/status", tags=["Model"])
+def model_status():
+    return {
+        "model_version": "heuristic_v1",
+        "last_trained": "2025-12-26",
+        "data_freshness_days": 0,
+        "drift_detected": False,
+        "retrain_required": False,
+    }
+
 
 # --------- RECOMMENDATION ENDPOINTS ---------
 

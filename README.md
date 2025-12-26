@@ -1,5 +1,21 @@
 AI-Powered Brand–Influencer Matching & Campaign Intelligence Platform
 Contact: manikumarp183@gmail.com
+## Demo & Proof
+This repo demonstrates:
+- AI ranking (recommendation system) with explainability
+- Agentic campaign strategy generation
+- RAG influencer discovery
+- Analytics feedback loop (events + recommendation logging)
+- Dockerized deployment with health checks
+
+### Run Locally
+docker-compose up -d --build
+
+### Health
+- API: http://localhost:4000/health
+- AI: http://localhost:8000/health
+- UI: http://localhost:3000
+
 
 NivoxAI is an end-to-end MarTech system that uses AI, LLM agents, recommendation systems, and RAG pipelines to match brands with the most suitable influencers (KOLs) and generate autonomous campaign strategies.
 
