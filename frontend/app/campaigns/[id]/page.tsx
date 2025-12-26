@@ -21,6 +21,7 @@ import {
   type RecommendationResponse,
 } from "@/lib/api";
 import { demoInfluencers } from "@/lib/demo-data";
+import { buildCampaignPayload } from "@/lib/payloads";
 import { useI18n } from "@/lib/i18n";
 
 type CampaignDetailPageProps = {
@@ -84,7 +85,8 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
     setIsLoadingRecs(true);
     setError(null);
 
-    const response = await recommend(campaign, demoInfluencers);
+    const payloadCampaign = buildCampaignPayload(campaign);
+    const response = await recommend(payloadCampaign, demoInfluencers);
     if (response.error || !response.data) {
       setError(response.error ?? "Recommendation failed.");
       setIsLoadingRecs(false);
@@ -115,7 +117,7 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
       return;
     }
 
-    const payloadCampaign = buildStrategyCampaignPayload(campaign);
+    const payloadCampaign = buildCampaignPayload(campaign);
     const response = await chatStrategy(payloadCampaign, recs);
     if (response.error || !response.data) {
       setError(response.error ?? "Strategy generation failed.");
@@ -428,44 +430,6 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
       ) : null}
     </div>
   );
-}
-
-function buildStrategyCampaignPayload(campaign: CampaignInput): CampaignInput & {
-  title: string;
-} {
-  const title =
-    (campaign as CampaignInput & { title?: string }).title ??
-    campaign.brand_name ??
-    "Demo Campaign";
-  const payload = {
-    id: campaign.id,
-    title,
-    brand_name: campaign.brand_name ?? "Demo Brand",
-    goal: campaign.goal ?? "Brand awareness and engagement",
-    target_region: campaign.target_region ?? (campaign as CampaignInput & { country?: string }).country ?? "Thailand",
-    target_age_range: campaign.target_age_range ?? "18-35",
-    description:
-      campaign.description ??
-      `Influencer campaign for ${title} targeting creators in ${
-        (campaign as CampaignInput & { country?: string }).country ?? "Asia"
-      }`,
-    budget: campaign.budget,
-  };
-
-  if (
-    !campaign.brand_name ||
-    !campaign.goal ||
-    !campaign.target_region ||
-    !campaign.target_age_range ||
-    !campaign.description
-  ) {
-    console.warn(
-      "Strategy payload filled with demo defaults for missing campaign fields.",
-      payload
-    );
-  }
-
-  return payload;
 }
 
 function SummaryItem({ label, value }: { label: string; value: string }) {

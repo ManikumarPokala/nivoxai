@@ -71,6 +71,10 @@ export type ApiResult<T> = {
   error: string | null;
 };
 
+export type CampaignPayload = CampaignInput & {
+  title: string;
+};
+
 const DEFAULT_TIMEOUT_MS = 8000;
 
 async function fetchJson<T>(
@@ -118,7 +122,7 @@ export async function getModelStatus(): Promise<ApiResult<ModelStatus>> {
 }
 
 export async function getAgentStatus(): Promise<ApiResult<AgentStatus>> {
-  return fetchJson<AgentStatus>(`/api/agent/status`);
+  return fetchJson<AgentStatus>(`/api/ai/agent-status`);
 }
 
 export async function getSampleRecommendation(): Promise<
@@ -150,10 +154,10 @@ export async function createCampaign(input: {
 }
 
 export async function recommend(
-  campaign: CampaignInput,
+  campaign: CampaignPayload,
   influencers: InfluencerInput[]
 ): Promise<ApiResult<RecommendationResponse>> {
-  return fetchJson<RecommendationResponse>(`/api/recommendations`, {
+  return fetchJson<RecommendationResponse>(`/api/ai/recommend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ campaign, influencers }),
@@ -161,11 +165,11 @@ export async function recommend(
 }
 
 export async function chatStrategy(
-  campaign: CampaignInput,
+  campaign: CampaignPayload,
   recommendations: RecommendationResponse,
   question?: string | null
 ): Promise<ApiResult<ChatStrategyResponse>> {
-  return fetchJson<ChatStrategyResponse>(`/api/chat-strategy`, {
+  return fetchJson<ChatStrategyResponse>(`/api/ai/chat-strategy`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ campaign, recommendations, question }),

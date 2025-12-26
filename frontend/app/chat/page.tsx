@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { chatStrategy, type RecommendationResponse } from "@/lib/api";
+import { buildCampaignPayload } from "@/lib/payloads";
 
 export default function StrategyChatPage() {
   const [campaignSummary, setCampaignSummary] = useState(
@@ -47,7 +48,12 @@ export default function StrategyChatPage() {
     };
 
     try {
-      const result = await chatStrategy(campaign, recommendations, question);
+      const payloadCampaign = buildCampaignPayload({
+        ...campaign,
+        title: campaign.brand_name,
+        country: campaign.target_region,
+      });
+      const result = await chatStrategy(payloadCampaign, recommendations, question);
       if (result.error || !result.data) {
         throw new Error(result.error ?? "Strategy request failed");
       }
