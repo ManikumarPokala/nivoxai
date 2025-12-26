@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from \"react\";
-import { Card, CardBody, CardHeader } from \"@/components/ui/Card\";
-import Badge from \"@/components/ui/Badge\";
-import EmptyState from \"@/components/ui/EmptyState\";
-import { getAnalyticsSummary, type AnalyticsSummary } from \"@/lib/analytics\";
-import { useI18n } from \"@/lib/i18n\";
+import { useEffect, useState } from "react";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import EmptyState from "@/components/ui/EmptyState";
+import { getAnalyticsSummary, type AnalyticsSummary } from "@/lib/analytics";
+import { useI18n } from "@/lib/i18n";
 
 export default function AnalyticsPage() {
   const { t } = useI18n();

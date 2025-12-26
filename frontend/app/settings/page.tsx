@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from \"react\";
-import { Card, CardBody, CardHeader } from \"@/components/ui/Card\";
-import Badge from \"@/components/ui/Badge\";
-import { getHealthAI, getHealthAPI } from \"@/lib/api\";
-import { AI_BASE_URL, API_BASE_URL } from \"@/lib/urls\";
-import { useI18n } from \"@/lib/i18n\";
+import { useEffect, useState } from "react";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import { getHealthAI, getHealthAPI } from "@/lib/api";
+import { AI_BASE_URL, API_BASE_URL } from "@/lib/urls";
+import { useI18n } from "@/lib/i18n";
 
 export default function SettingsPage() {
   const { t } = useI18n();

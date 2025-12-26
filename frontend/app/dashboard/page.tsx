@@ -1,13 +1,13 @@
 "use client";
 
-import Link from \"next/link\";
-import { useEffect, useState } from \"react\";
-import { Card, CardBody, CardHeader } from \"@/components/ui/Card\";
-import Badge from \"@/components/ui/Badge\";
-import { getAnalyticsSummary, type AnalyticsSummary } from \"@/lib/analytics\";
-import { getModelStatus, type ModelStatus } from \"@/lib/api\";
-import { demoCampaigns } from \"@/lib/demo-data\";
-import { useI18n } from \"@/lib/i18n\";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import { getAnalyticsSummary, type AnalyticsSummary } from "@/lib/analytics";
+import { getModelStatus, type ModelStatus } from "@/lib/api";
+import { demoCampaigns } from "@/lib/demo-data";
+import { useI18n } from "@/lib/i18n";
 
 const recentActivity = [
   {
@@ -22,7 +22,7 @@ const recentActivity = [
   },
   {
     title: "RAG discovery query",
-    detail: "\"Southeast Asia skincare creators\"",
+    detail: ""Southeast Asia skincare creators"",
     time: "3 hours ago",
   },
 ];
