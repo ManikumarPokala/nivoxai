@@ -1,21 +1,9 @@
-// frontend/src/lib/analytics.ts
-
 import { API_BASE_URL } from "./urls";
-
-/* =============================
-   Types (Exported for UI)
-============================= */
-
-export type TopGoal = {
-  goal: string;
-  count: number;
-};
 
 export type AnalyticsSummary = {
   total_events: number;
   total_recommendations: number;
-  top_goals: TopGoal[];
-  lastUpdatedAt: string;
+  top_goals: { goal: string; count: number }[];
 };
 
 export type CampaignAnalytics = {
@@ -30,70 +18,51 @@ export type CampaignAnalytics = {
   roi: number;
 };
 
-/* =============================
-   Result Wrapper (Enterprise)
-============================= */
+type ApiResult<T> = {
+  data: T | null;
+  error: string | null;
+};
 
-type Ok<T> = { data: T; error: null };
-type Err = { data: null; error: string };
-export type Result<T> = Ok<T> | Err;
-
-/* =============================
-   Summary Analytics
-============================= */
-
-export async function getAnalyticsSummary(): Promise<
-  Result<AnalyticsSummary>
-> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/analytics/summary`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      return { data: null, error: `HTTP ${res.status}` };
-    }
-
-    const json = await res.json();
-
-    return {
-      data: {
-        ...json,
-        lastUpdatedAt: new Date().toISOString(),
-      },
-      error: null,
-    };
-  } catch {
+async function handleJsonResponse<T>(response: Response): Promise<ApiResult<T>> {
+  if (!response.ok) {
     return {
       data: null,
-      error: "Failed to load analytics summary",
+      error: `Request failed (${response.status} ${response.statusText})`,
     };
+  }
+
+  try {
+    const data = (await response.json()) as T;
+    return { data, error: null };
+  } catch {
+    return { data: null, error: "Failed to parse response JSON" };
   }
 }
 
-/* =============================
-   Campaign-Level Analytics
-============================= */
+export async function getAnalyticsSummary(): Promise<ApiResult<AnalyticsSummary>> {
+  try {
+    // Avoid caching so dashboards stay fresh in SSR and client transitions.
+    const response = await fetch(`${API_BASE_URL}/analytics/summary`, {
+      cache: "no-store",
+    });
+    return await handleJsonResponse<AnalyticsSummary>(response);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Request failed";
+    return { data: null, error: message };
+  }
+}
 
 export async function getCampaignAnalytics(
   campaignId: string
-): Promise<Result<CampaignAnalytics>> {
+): Promise<ApiResult<CampaignAnalytics>> {
   try {
-    const res = await fetch(
+    const response = await fetch(
       `${API_BASE_URL}/analytics/campaign/${campaignId}`,
       { cache: "no-store" }
     );
-
-    if (!res.ok) {
-      return { data: null, error: `HTTP ${res.status}` };
-    }
-
-    const json = await res.json();
-    return { data: json, error: null };
-  } catch {
-    return {
-      data: null,
-      error: "Failed to load campaign analytics",
-    };
+    return await handleJsonResponse<CampaignAnalytics>(response);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Request failed";
+    return { data: null, error: message };
   }
 }
