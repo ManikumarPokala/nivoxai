@@ -1,194 +1,244 @@
 AI-Powered Brand–Influencer Matching & Campaign Intelligence Platform
+
+Author: Manikumar Pokala
 Contact: manikumarp183@gmail.com
-## Demo & Proof
-This repo demonstrates:
-- AI ranking (recommendation system) with explainability
-- Agentic campaign strategy generation
-- RAG influencer discovery
-- Analytics feedback loop (events + recommendation logging)
-- Dockerized deployment with health checks
 
-### Run Locally
-docker-compose up -d --build
+1. Executive Summary (Why This Exists)
 
-### Health
-- API: http://localhost:4000/health
-- AI: http://localhost:8000/health
-- UI: http://localhost:3000
+NivoxAI is a production-oriented AI system designed to solve the same problem space as Influmatch:
+intelligently matching brand requirements with the most suitable KOLs (influencers), and autonomously generating campaign strategies using recommendation systems, RAG pipelines, and agentic LLMs.
 
+This repository demonstrates enterprise-style AI engineering, including:
 
-NivoxAI is an end-to-end MarTech system that uses AI, LLM agents, recommendation systems, and RAG pipelines to match brands with the most suitable influencers (KOLs) and generate autonomous campaign strategies.
+Ranking & recommendation models
 
-This monorepo contains:
+Agentic LLM workflows with tool-calling
 
-backend-ai → AI microservice (FastAPI + ML + RAG + LLM agentic strategy)
+Retrieval-Augmented Generation (RAG) systems
 
-backend-api → Public API Gateway (Node.js + TypeScript)
+API & frontend integration
 
-frontend → Marketing/UI Dashboard (Next.js)
+Dockerized, multi-service deployment
 
-postgres → Analytics + events database
+Analytics & feedback loops for continuous improvement
 
-1. Features
-Recommendation Engine
+Goal: Prove end-to-end AI system ownership, not just model development.
 
-Combined heuristic + ML scoring (Logistic Regression)
+2. Architecture Overview (Influmatch-Aligned)
+High-Level Flow
+Brand Campaign Request
+        ↓
+Recommendation Engine (Heuristics + ML Ranking)
+        ↓
+RAG Influencer Discovery (Vector + Metadata Search)
+        ↓
+LLM Strategy Agent (Tool-Calling + Reasoning)
+        ↓
+Dashboard / API Response
+        ↓
+Event + Recommendation Logging (Feedback Loop)
 
-Category/region/age matching
+Services
+Service	Responsibility
+backend-ai	AI logic: recommendation models, RAG search, LLM agent
+backend-api	Public API gateway (Node.js + TypeScript)
+frontend	Campaign & analytics dashboard (Next.js)
+postgres	Events, recommendation logs, analytics data
 
-Engagement-driven feature scoring
+All services are fully Dockerized and orchestrated via docker-compose.
 
-Expandable to neural embedding ranking
+3. Core AI Capabilities
+3.1 Recommendation & Ranking Engine
 
-RAG Search
+Hybrid scoring:
 
-Fast influencer discovery via semantic search
+Rule-based heuristics (category, region, age fit)
 
-Vector scoring with metadata
+ML model baseline (Logistic Regression)
 
-Agentic AI Strategy
+Feature engineering:
 
-LLM-powered autonomous strategy generation
+Engagement rate
 
-Tool-calling for recommendation insights
+Audience alignment
 
-Full Docker Orchestration
+Brand compatibility signals
 
-One-command setup
+Explainability:
 
-Backend + AI + Frontend + DB
+Individual reasons logged per recommendation
 
-2. Tech Stack
+Extensible to:
 
-Backend AI: FastAPI, Scikit-Learn, Pandas, NumPy, OpenAI API
-Backend API: Node.js, TypeScript, Express, PostgreSQL
-Frontend: Next.js, React, TailwindCSS
-Infra: Docker, PostgreSQL 16
+Embedding-based neural ranking
 
-3. Repository Structure
-nivoxai/
-│
-├── backend-ai/
-├── backend-api/
-├── frontend/
-├── docker-compose.yml
-├── .env
-└── README.md
+Learning-to-Rank models
 
-4. Environment Setup
+📌 Production intent: The system is structured so models can be retrained and versioned without breaking APIs.
 
-Create a .env in the root:
+3.2 RAG Influencer Discovery Pipeline
 
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-OPENAI_API_KEY=your_openai_key
+Semantic influencer search
 
-5. Run the Project
-Start all services:
-docker compose down --remove-orphans
-docker compose up --build
+Vector similarity + metadata filtering
 
-Services:
+Designed for:
+
+Multi-tenant brand data
+
+Governance and visibility filtering
+
+Roadmap-ready for:
+
+Hybrid search (BM25 + vector)
+
+Re-ranking (cross-encoder / LLM reranker)
+
+Freshness-aware retrieval
+
+3.3 Agentic LLM Strategy System
+
+LLM-powered campaign strategy generation
+
+Uses tool-calling to:
+
+Inspect ranking results
+
+Reference influencer metadata
+
+Designed as an agent loop:
+
+Understand campaign
+
+Query recommendation system
+
+Reason over results
+
+Generate explainable strategy
+
+📌 Structured for future expansion:
+
+Memory (short-term / long-term)
+
+Critique & self-review loop
+
+Safety fallbacks and retries
+
+4. Analytics & Feedback Loop
+
+The system logs:
+
+User & campaign events
+
+Recommendation outputs
+
+AI explanation metadata
+
+These logs enable:
+
+Model performance evaluation
+
+Retraining triggers
+
+Offline experimentation
+
+Schema examples:
+
+app_events
+
+recommendation_logs
+
+5. Technology Stack
+
+AI / ML
+
+Python, FastAPI
+
+Scikit-learn, NumPy, Pandas
+
+OpenAI API (LLMs)
+
+RAG architecture (vector-based)
+
+Backend
+
+Node.js, TypeScript, Express
+
+REST APIs
+
+Frontend
+
+Next.js, React, TailwindCSS
+
+Infrastructure
+
+Docker, Docker Compose
+
+PostgreSQL 16
+
+6. Local Setup & Execution
+docker compose up -d --build
+
+Health Endpoints
 
 Frontend: http://localhost:3000
 
-Backend API: http://localhost:4000
+API: http://localhost:4000/health
 
-Backend AI: http://localhost:8000
+AI: http://localhost:8000/health
 
-PostgreSQL: localhost:5432
+7. Key Endpoints
+Capability	Endpoint
+Recommendation	POST /recommend
+RAG Search	POST /rag/influencers
+Strategy Agent	POST /chat-strategy
+Health	/health
 
-6. Database Setup (Run once)
+Agent Trace
+The /chat-strategy response includes agent metadata for plan → draft → review:
+- reply: final strategy text
+- trace: list of { name, summary, latency_ms }
+- model: model identifier when LLM is used (nullable)
+- fallback_used: true when deterministic fallback is used
 
-Enter PostgreSQL:
-
-docker exec -it nivoxai-postgres psql -U postgres -d nivoxai
-
-
-Create tables:
-
-CREATE TABLE IF NOT EXISTS app_events (
-    id SERIAL PRIMARY KEY,
-    event_name TEXT NOT NULL,
-    user_id TEXT,
-    campaign_id TEXT,
-    payload JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS recommendation_logs (
-    id SERIAL PRIMARY KEY,
-    campaign_id TEXT,
-    influencer_id TEXT,
-    score NUMERIC,
-    reasons JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-7. Test Endpoints
-Health
-curl http://localhost:8000/health
-
-Recommendation
-curl -X POST http://localhost:8000/recommend \
-  -H "Content-Type: application/json" \
-  -d '{ "campaign": { ... }, "influencers": [] }'
-
-RAG Search
-curl -X POST http://localhost:8000/rag/influencers \
-  -H "Content-Type: application/json" \
-  -d '{"query": "skincare thailand", "top_k": 5 }'
-
-Strategy AI
+Example:
 curl -X POST http://localhost:8000/chat-strategy \
   -H "Content-Type: application/json" \
-  -d '{ "campaign": { ... }, "recommendations": { ... } }'
+  -d '{"campaign":{"id":"camp-001","brand_name":"Luma","goal":"Launch skincare","target_region":"Thailand","target_age_range":"18-24","budget":25000,"description":"Summer serum"},"recommendations":{"campaign_id":"camp-001","recommendations":[{"influencer_id":"inf-1","score":0.9,"reasons":["Category fit"]}]}}'
 
-8. Train ML Model
+{"reply":"...","trace":[{"name":"plan","summary":"Generated 3 phases with measurement and risks.","latency_ms":4}],"model":null,"fallback_used":true}
+8. ML Model Training
 cd backend-ai
-python3 train_model.py
-docker compose restart backend-ai
-
-9. Rebuild Individual Services
-
-Frontend:
-
-docker compose build frontend
-docker compose restart frontend
-
-
-Backend-AI:
-
-docker compose build backend-ai
+python train_model.py
 docker compose restart backend-ai
 
 
-Backend-API:
+Supports iterative model improvements without changing inference contracts.
 
-docker compose build backend-api
-docker compose restart backend-api
+9. Production Readiness Roadmap (In Progress)
 
-10. Stop System
-docker compose down
+Planned / being implemented:
 
+Offline evaluation (NDCG@K, Recall@K)
 
-Remove volumes + images:
+Agent orchestration & memory
 
-docker compose down --rmi all --volumes --remove-orphans
+CI/CD with GitHub Actions
 
-11. For Production
+Kubernetes manifests
 
-Move secrets to environment variables
+Monitoring & model observability
 
-Add HTTPS reverse proxy (Nginx/Traefik)
+Redis for caching embeddings
 
-Consider Supabase for managed DB
+10. Why This Matters
 
-Add Redis for caching embeddings
+This project demonstrates:
 
-Upgrade ML model to transformer-based ranking
+Ownership of end-to-end AI systems
 
-Contact
+Ability to translate AI research into deployable products
 
-For collaboration, support, or hiring opportunities:
-manikumarp183@gmail.com
+Readiness to work in client-facing MarTech AI teams
+
+Strong alignment with Influmatch & Amity AI Labs
