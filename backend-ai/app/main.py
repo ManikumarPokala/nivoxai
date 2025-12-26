@@ -103,7 +103,12 @@ def model_status():
 @app.get("/agent/status", tags=["Agent"])
 def agent_status():
     default_model = os.environ.get("OPENAI_MODEL")
-    return runner.get_agent_status(default_model)
+    return {
+        "agent_version": "v1",
+        "default_model": default_model,
+        "last_run_at": runner.LAST_RUN_AT,
+        "last_error": runner.LAST_ERROR,
+    }
 
 
 # --------- RECOMMENDATION ENDPOINTS ---------

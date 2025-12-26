@@ -34,6 +34,15 @@ def _rank_baseline(influencers: List[dict]) -> List[int]:
     return [idx for idx, _ in ranked]
 
 
+def _rank_baseline_engagement(influencers: List[dict]) -> List[int]:
+    ranked = sorted(
+        enumerate(influencers),
+        key=lambda item: item[1].get("engagement_rate", 0),
+        reverse=True,
+    )
+    return [idx for idx, _ in ranked]
+
+
 def _rank_model(influencers: List[dict], campaign: dict) -> List[int]:
     influencer_models = [Influencer(**inf) for inf in influencers]
     campaign_model = Campaign(**campaign)
@@ -71,6 +80,12 @@ def main() -> None:
         "base_ndcg_10": [],
         "base_p_10": [],
         "base_r_10": [],
+        "eng_ndcg_5": [],
+        "eng_p_5": [],
+        "eng_r_5": [],
+        "eng_ndcg_10": [],
+        "eng_p_10": [],
+        "eng_r_10": [],
     }
 
     print("=== Offline Ranking Eval ===")
@@ -85,11 +100,14 @@ def main() -> None:
 
         model_order = _rank_model(influencers, campaign)
         base_order = _rank_baseline(influencers)
+        eng_order = _rank_baseline_engagement(influencers)
 
         m5 = _compute_metrics(y_true_rels, y_true_bin, model_order, 5)
         m10 = _compute_metrics(y_true_rels, y_true_bin, model_order, 10)
         b5 = _compute_metrics(y_true_rels, y_true_bin, base_order, 5)
         b10 = _compute_metrics(y_true_rels, y_true_bin, base_order, 10)
+        e5 = _compute_metrics(y_true_rels, y_true_bin, eng_order, 5)
+        e10 = _compute_metrics(y_true_rels, y_true_bin, eng_order, 10)
 
         agg["model_ndcg_5"].append(m5[0])
         agg["model_p_5"].append(m5[1])
@@ -103,35 +121,57 @@ def main() -> None:
         agg["base_ndcg_10"].append(b10[0])
         agg["base_p_10"].append(b10[1])
         agg["base_r_10"].append(b10[2])
+        agg["eng_ndcg_5"].append(e5[0])
+        agg["eng_p_5"].append(e5[1])
+        agg["eng_r_5"].append(e5[2])
+        agg["eng_ndcg_10"].append(e10[0])
+        agg["eng_p_10"].append(e10[1])
+        agg["eng_r_10"].append(e10[2])
 
         print(
             f"- {campaign['id']} "
             f"NDCG@5={m5[0]:.2f} P@5={m5[1]:.2f} R@5={m5[2]:.2f} "
-            f"| Baseline NDCG@5={b5[0]:.2f}"
+            f"| Baseline followers NDCG@5={b5[0]:.2f} "
+            f"| Baseline engagement NDCG@5={e5[0]:.2f}"
         )
 
     def mean(values: List[float]) -> float:
         return sum(values) / len(values) if values else 0.0
 
     print("")
-    print("Model (weighted ranker) vs Baseline (followers)")
+    print("Model (weighted ranker)")
+    print(f"NDCG@5: {mean(agg['model_ndcg_5']):.2f}")
+    print(f"Precision@5: {mean(agg['model_p_5']):.2f}")
+    print(f"Recall@5: {mean(agg['model_r_5']):.2f}")
+    print(f"NDCG@10: {mean(agg['model_ndcg_10']):.2f}")
+    print(f"Precision@10: {mean(agg['model_p_10']):.2f}")
+    print(f"Recall@10: {mean(agg['model_r_10']):.2f}")
+
+    print("")
+    print("Baselines")
     print(
-        f"NDCG@5: model {mean(agg['model_ndcg_5']):.2f} | baseline {mean(agg['base_ndcg_5']):.2f}"
+        f"Followers baseline NDCG@5: {mean(agg['base_ndcg_5']):.2f} "
+        f"| Engagement baseline NDCG@5: {mean(agg['eng_ndcg_5']):.2f}"
     )
     print(
-        f"Precision@5: model {mean(agg['model_p_5']):.2f} | baseline {mean(agg['base_p_5']):.2f}"
+        f"Followers baseline Precision@5: {mean(agg['base_p_5']):.2f} "
+        f"| Engagement baseline Precision@5: {mean(agg['eng_p_5']):.2f}"
     )
     print(
-        f"Recall@5: model {mean(agg['model_r_5']):.2f} | baseline {mean(agg['base_r_5']):.2f}"
+        f"Followers baseline Recall@5: {mean(agg['base_r_5']):.2f} "
+        f"| Engagement baseline Recall@5: {mean(agg['eng_r_5']):.2f}"
     )
     print(
-        f"NDCG@10: model {mean(agg['model_ndcg_10']):.2f} | baseline {mean(agg['base_ndcg_10']):.2f}"
+        f"Followers baseline NDCG@10: {mean(agg['base_ndcg_10']):.2f} "
+        f"| Engagement baseline NDCG@10: {mean(agg['eng_ndcg_10']):.2f}"
     )
     print(
-        f"Precision@10: model {mean(agg['model_p_10']):.2f} | baseline {mean(agg['base_p_10']):.2f}"
+        f"Followers baseline Precision@10: {mean(agg['base_p_10']):.2f} "
+        f"| Engagement baseline Precision@10: {mean(agg['eng_p_10']):.2f}"
     )
     print(
-        f"Recall@10: model {mean(agg['model_r_10']):.2f} | baseline {mean(agg['base_r_10']):.2f}"
+        f"Followers baseline Recall@10: {mean(agg['base_r_10']):.2f} "
+        f"| Engagement baseline Recall@10: {mean(agg['eng_r_10']):.2f}"
     )
 
 

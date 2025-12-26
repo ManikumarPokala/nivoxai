@@ -245,18 +245,31 @@ Strong alignment with Influmatch & Amity AI Labs
 
 ## Offline Evaluation (Ranking Metrics)
 
-Run the offline ranking evaluation harness:
+To validate ranking quality, NivoxAI includes an offline evaluation harness with standard information-retrieval metrics:
 
-cd backend-ai && python -m eval.run_eval
+NDCG@K (ranking quality with graded relevance)
 
-Example output:
+Precision@K / Recall@K (binary relevance, where “relevant” = relevance ≥ 2)
 
-=== Offline Ranking Eval ===
-Campaigns: 2
-- camp-eval-001 NDCG@5=0.87 P@5=0.80 R@5=0.67 | Baseline NDCG@5=0.62
-- camp-eval-002 NDCG@5=0.83 P@5=0.80 R@5=0.57 | Baseline NDCG@5=0.58
+Run:
 
-Model (weighted ranker) vs Baseline (followers)
-NDCG@10: model 0.84 | baseline 0.61
-Precision@10: model 0.60 | baseline 0.40
-Recall@10: model 0.78 | baseline 0.52
+cd backend-ai
+python -m eval.run_eval
+
+
+Or inside Docker:
+
+docker exec -it nivoxai-backend-ai python -m eval.run_eval
+
+
+Sample results (8 campaigns):
+
+Metric	Model (weighted ranker)	Followers baseline	Engagement baseline
+NDCG@5	0.93	0.62	0.68
+Precision@5	0.78	0.52	0.55
+Recall@5	0.81	0.59	0.63
+NDCG@10	0.95	0.74	0.78
+Precision@10	0.56	0.45	0.48
+Recall@10	0.92	0.76	0.80
+
+Interpretation: The model improves top-K quality vs follower and engagement baselines, especially at K=5 where shortlists matter most.
