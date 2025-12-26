@@ -1,5 +1,24 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## NivoxAI Frontend Navigation
+
+Core routes (App Router):
+
+- `/dashboard` — executive KPI overview + quick actions
+- `/campaigns` — campaign list + create modal
+- `/campaigns/[id]` — campaign workspace with recommendations, strategy, and audit
+- `/discovery` — RAG influencer search
+- `/analytics` — summary analytics KPIs
+- `/settings` — environment health checks
+
+## Demo Flow
+
+1) Open `/dashboard` and review KPIs.
+2) Go to `/campaigns` and select `camp-demo-001`.
+3) Run **Recommendations** and then **Generate Strategy**.
+4) Visit `/discovery` for RAG search.
+5) Use `/analytics` for KPI summary.
+
 ## Getting Started
 
 First, run the development server:
