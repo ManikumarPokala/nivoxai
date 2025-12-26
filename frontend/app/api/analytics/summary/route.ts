@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-const BACKEND_API_URL =
-  process.env.BACKEND_API_URL ?? "http://localhost:4000";
+const BACKEND_API_BASE_URL =
+  process.env.BACKEND_API_BASE_URL ?? "http://backend-api:4000";
 
 export async function GET() {
   try {
-    const response = await fetch(`${BACKEND_API_URL}/analytics/summary`, {
+    const response = await fetch(`${BACKEND_API_BASE_URL}/analytics/summary`, {
       cache: "no-store",
     });
     const data = await response.json();

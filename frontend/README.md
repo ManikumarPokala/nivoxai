@@ -19,6 +19,17 @@ Core routes (App Router):
 4) Visit `/discovery` for RAG search.
 5) Use `/analytics` for KPI summary.
 
+## API Proxy (No CORS)
+
+The frontend uses Next.js Route Handlers under `/api/*` to proxy to the services.
+
+Environment variables (with defaults):
+
+- `BACKEND_API_BASE_URL` (default: `http://backend-api:4000`)
+- `BACKEND_AI_BASE_URL` (default: `http://backend-ai:8000`)
+
+This avoids CORS issues and works with Docker Compose service DNS.
+
 ## Getting Started
 
 First, run the development server:

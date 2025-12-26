@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-const BACKEND_AI_URL =
-  process.env.BACKEND_AI_URL ?? "http://localhost:8000";
+const BACKEND_AI_BASE_URL =
+  process.env.BACKEND_AI_BASE_URL ?? "http://backend-ai:8000";
 
 export async function GET() {
   try {
-    const response = await fetch(`${BACKEND_AI_URL}/sample-recommendation`, {
+    const response = await fetch(`${BACKEND_AI_BASE_URL}/sample-recommendation`, {
       cache: "no-store",
     });
     const data = await response.json();

@@ -118,7 +118,7 @@ export async function getModelStatus(): Promise<ApiResult<ModelStatus>> {
 }
 
 export async function getAgentStatus(): Promise<ApiResult<AgentStatus>> {
-  return fetchJson<AgentStatus>(`/api/ai/agent-status`);
+  return fetchJson<AgentStatus>(`/api/agent/status`);
 }
 
 export async function getSampleRecommendation(): Promise<
@@ -143,7 +143,7 @@ export async function chatStrategy(
   recommendations: RecommendationResponse,
   question?: string | null
 ): Promise<ApiResult<ChatStrategyResponse>> {
-  return fetchJson<ChatStrategyResponse>(`/api/chat`, {
+  return fetchJson<ChatStrategyResponse>(`/api/chat-strategy`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ campaign, recommendations, question }),

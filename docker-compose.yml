@@ -73,8 +73,8 @@ services:
         NEXT_PUBLIC_API_BASE_URL: http://backend-api:4000
         NEXT_PUBLIC_ANALYTICS_URL: http://backend-ai:8000
     environment:
-      BACKEND_API_URL: http://backend-api:4000
-      BACKEND_AI_URL: http://backend-ai:8000
+      BACKEND_API_BASE_URL: http://backend-api:4000
+      BACKEND_AI_BASE_URL: http://backend-ai:8000
     container_name: nivoxai-frontend
     restart: always
     depends_on:
