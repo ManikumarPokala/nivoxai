@@ -1,9 +1,13 @@
-import Link from "next/link";
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
-import { getAnalyticsSummary } from "@/lib/analytics";
-import { getModelStatus } from "@/lib/api";
-import { demoCampaigns } from "@/lib/demo-data";
+\"use client\";
+
+import Link from \"next/link\";
+import { useEffect, useState } from \"react\";
+import { Card, CardBody, CardHeader } from \"@/components/ui/Card\";
+import Badge from \"@/components/ui/Badge\";
+import { getAnalyticsSummary, type AnalyticsSummary } from \"@/lib/analytics\";
+import { getModelStatus, type ModelStatus } from \"@/lib/api\";
+import { demoCampaigns } from \"@/lib/demo-data\";
+import { useI18n } from \"@/lib/i18n\";
 
 const recentActivity = [
   {
@@ -23,11 +27,31 @@ const recentActivity = [
   },
 ];
 
-export default async function DashboardPage() {
-  const [analytics, modelStatus] = await Promise.all([
-    getAnalyticsSummary(),
-    getModelStatus(),
-  ]);
+export default function DashboardPage() {
+  const { t } = useI18n();
+  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getAnalyticsSummary().then((result) => {
+      if (!active) {
+        return;
+      }
+      setAnalytics(result.data);
+      setAnalyticsError(result.error);
+    });
+    getModelStatus().then((result) => {
+      if (!active) {
+        return;
+      }
+      setModelStatus(result.data);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -52,11 +76,11 @@ export default async function DashboardPage() {
               Recommendations
             </p>
             <h2 className="text-2xl font-semibold text-slate-900">
-              {analytics.data?.total_recommendations ?? "—"}
+              {analytics?.total_recommendations ?? "—"}
             </h2>
           </CardHeader>
           <CardBody className="text-sm text-slate-500">
-            {analytics.error
+            {analyticsError
               ? "Connect analytics endpoint."
               : "Generated across all campaigns."}
           </CardBody>
@@ -68,7 +92,7 @@ export default async function DashboardPage() {
               Total Events
             </p>
             <h2 className="text-2xl font-semibold text-slate-900">
-              {analytics.data?.total_events ?? "—"}
+              {analytics?.total_events ?? "—"}
             </h2>
           </CardHeader>
           <CardBody className="text-sm text-slate-500">
@@ -82,12 +106,12 @@ export default async function DashboardPage() {
               Model Status
             </p>
             <h2 className="text-xl font-semibold text-slate-900">
-              {modelStatus.data ? "Operational" : "Unknown"}
+              {modelStatus ? "Operational" : "Unknown"}
             </h2>
           </CardHeader>
           <CardBody className="flex items-center gap-2 text-sm text-slate-500">
-            <Badge variant={modelStatus.data ? "success" : "warning"}>
-              {modelStatus.data?.model_version ?? "Connect AI service"}
+            <Badge variant={modelStatus ? "success" : "warning"}>
+              {modelStatus?.model_version ?? "Connect AI service"}
             </Badge>
           </CardBody>
         </Card>
@@ -100,7 +124,7 @@ export default async function DashboardPage() {
               Recent Activity
             </p>
             <h3 className="text-lg font-semibold text-slate-900">
-              Live workspace signals
+              {t("page_dashboard_title")}
             </h3>
           </CardHeader>
           <CardBody>
@@ -137,21 +161,21 @@ export default async function DashboardPage() {
               href="/campaigns"
               className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
             >
-              Create or select a campaign
+              {t("action_create_campaign")}
               <span className="text-slate-400">→</span>
             </Link>
             <Link
               href="/discovery"
               className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
             >
-              Discover influencers
+              {t("action_discover")}
               <span className="text-slate-400">→</span>
             </Link>
             <Link
               href="/campaigns/camp-demo-001"
               className="flex items-center justify-between rounded-2xl border border-slate-900 bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              Generate strategy
+              {t("action_generate_strategy")}
               <span className="text-white/70">→</span>
             </Link>
             <Link

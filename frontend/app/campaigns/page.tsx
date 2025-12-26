@@ -9,6 +9,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/Table";
 import { demoCampaigns } from "@/lib/demo-data";
 import type { CampaignInput } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 const statusMap: Record<string, "success" | "warning" | "info"> = {
   Active: "success",
@@ -17,6 +18,7 @@ const statusMap: Record<string, "success" | "warning" | "info"> = {
 };
 
 export default function CampaignsPage() {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [campaigns, setCampaigns] = useState<CampaignInput[]>(demoCampaigns);
@@ -51,10 +53,10 @@ export default function CampaignsPage() {
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              Campaigns
+              {t("nav_campaigns")}
             </p>
             <h2 className="text-xl font-semibold text-slate-900">
-              Campaign portfolio
+              {t("page_campaigns_title")}
             </h2>
             <p className="text-sm text-slate-500">
               Track launches, content briefs, and performance status in one view.
@@ -67,15 +69,21 @@ export default function CampaignsPage() {
               placeholder="Search campaigns, goals, regions"
               className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-slate-400 sm:w-64"
             />
-            <Button onClick={() => setIsModalOpen(true)}>Create Campaign</Button>
+            <Button onClick={() => setIsModalOpen(true)}>
+              {t("action_create_campaign")}
+            </Button>
           </div>
         </CardHeader>
         <CardBody>
           {filteredCampaigns.length === 0 ? (
             <EmptyState
-              title="No campaigns found"
-              description="Create a new campaign to start generating recommendations and strategies."
-              action={<Button onClick={() => setIsModalOpen(true)}>New campaign</Button>}
+              title={t("empty_campaigns_title")}
+              description={t("empty_campaigns_desc")}
+              action={
+                <Button onClick={() => setIsModalOpen(true)}>
+                  {t("action_create_campaign")}
+                </Button>
+              }
             />
           ) : (
             <Table>

@@ -4,30 +4,32 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "./ui/utils";
+import { useI18n } from "@/lib/i18n";
 
 type AppShellProps = {
   children: React.ReactNode;
 };
 
-const navItems = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Campaigns", href: "/campaigns" },
-  { label: "Discovery", href: "/discovery" },
-  { label: "Analytics", href: "/analytics" },
-  { label: "Settings", href: "/settings" },
-];
-
-const titleMap: Record<string, string> = {
-  "/dashboard": "Executive Dashboard",
-  "/campaigns": "Campaigns",
-  "/discovery": "Influencer Discovery",
-  "/analytics": "Analytics",
-  "/settings": "Workspace Settings",
-};
-
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { locale, setLocale, t } = useI18n();
+
+  const navItems = [
+    { label: t("nav_dashboard"), href: "/dashboard" },
+    { label: t("nav_campaigns"), href: "/campaigns" },
+    { label: t("nav_discovery"), href: "/discovery" },
+    { label: t("nav_analytics"), href: "/analytics" },
+    { label: t("nav_settings"), href: "/settings" },
+  ];
+
+  const titleMap: Record<string, string> = {
+    "/dashboard": t("page_dashboard_title"),
+    "/campaigns": t("page_campaigns_title"),
+    "/discovery": t("page_discovery_title"),
+    "/analytics": t("page_analytics_title"),
+    "/settings": t("page_settings_title"),
+  };
 
   const pageTitle = useMemo(() => {
     if (!pathname) {
@@ -35,11 +37,11 @@ export default function AppShell({ children }: AppShellProps) {
     }
 
     if (pathname.startsWith("/campaigns/") && pathname !== "/campaigns") {
-      return "Campaign Workspace";
+      return t("page_campaign_detail_title");
     }
 
     return titleMap[pathname] ?? "NivoxAI";
-  }, [pathname]);
+  }, [pathname, t]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-[#f7f6f2] to-slate-100 text-slate-900">
@@ -122,20 +124,29 @@ export default function AppShell({ children }: AppShellProps) {
                   href="/campaigns"
                   className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                 >
-                  Create Campaign
+                  {t("action_create_campaign")}
                 </Link>
                 <Link
                   href="/discovery"
                   className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
                 >
-                  Discover
+                  {t("action_discover")}
                 </Link>
                 <Link
                   href="/campaigns/camp-demo-001"
                   className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
-                  Generate Strategy
+                  {t("action_generate_strategy")}
                 </Link>
+                <select
+                  value={locale}
+                  onChange={(event) => setLocale(event.target.value as typeof locale)}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600"
+                  aria-label="Language selector"
+                >
+                  <option value="en">EN</option>
+                  <option value="th">TH</option>
+                </select>
               </div>
             </div>
           </header>

@@ -6,8 +6,10 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import Skeleton from "@/components/ui/Skeleton";
 import { ragInfluencers, type RagResult } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 export default function DiscoveryPage() {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [topK, setTopK] = useState(5);
   const [filters, setFilters] = useState({
@@ -44,9 +46,9 @@ export default function DiscoveryPage() {
       <Card>
         <CardHeader>
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            Discovery
+            {t("nav_discovery")}
           </p>
-          <h2 className="text-xl font-semibold">Influencer knowledge search</h2>
+          <h2 className="text-xl font-semibold">{t("page_discovery_title")}</h2>
           <p className="text-sm text-slate-500">
             Use RAG to explore creators, niches, and campaign fit signals.
           </p>
@@ -174,8 +176,8 @@ export default function DiscoveryPage() {
             </div>
           ) : (
             <EmptyState
-              title="No discovery results"
-              description="Run a search to populate this panel with RAG insights."
+              title={t("empty_discovery_title")}
+              description={t("empty_discovery_desc")}
             />
           )}
         </CardBody>

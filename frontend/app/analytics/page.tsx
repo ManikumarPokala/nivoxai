@@ -1,19 +1,39 @@
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
-import EmptyState from "@/components/ui/EmptyState";
-import { getAnalyticsSummary } from "@/lib/analytics";
+\"use client\";
 
-export default async function AnalyticsPage() {
-  const summary = await getAnalyticsSummary();
+import { useEffect, useState } from \"react\";
+import { Card, CardBody, CardHeader } from \"@/components/ui/Card\";
+import Badge from \"@/components/ui/Badge\";
+import EmptyState from \"@/components/ui/EmptyState\";
+import { getAnalyticsSummary, type AnalyticsSummary } from \"@/lib/analytics\";
+import { useI18n } from \"@/lib/i18n\";
+
+export default function AnalyticsPage() {
+  const { t } = useI18n();
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getAnalyticsSummary().then((result) => {
+      if (!active) {
+        return;
+      }
+      setSummary(result.data);
+      setError(result.error);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            Analytics
+            {t("nav_analytics")}
           </p>
-          <h2 className="text-xl font-semibold">Performance overview</h2>
+          <h2 className="text-xl font-semibold">{t("page_analytics_title")}</h2>
           <p className="text-sm text-slate-500">
             Aggregated KPIs from the backend API analytics service.
           </p>
@@ -27,11 +47,11 @@ export default async function AnalyticsPage() {
               Total Events
             </p>
             <h3 className="text-2xl font-semibold">
-              {summary.data?.total_events ?? "—"}
+              {summary?.total_events ?? "—"}
             </h3>
           </CardHeader>
           <CardBody className="text-sm text-slate-500">
-            {summary.error ? "Endpoint not configured." : "Tracking signals ingested."}
+            {error ? "Endpoint not configured." : "Tracking signals ingested."}
           </CardBody>
         </Card>
         <Card>
@@ -40,11 +60,11 @@ export default async function AnalyticsPage() {
               Recommendations
             </p>
             <h3 className="text-2xl font-semibold">
-              {summary.data?.total_recommendations ?? "—"}
+              {summary?.total_recommendations ?? "—"}
             </h3>
           </CardHeader>
           <CardBody className="text-sm text-slate-500">
-            {summary.error ? "Connect analytics endpoint." : "Ranker output logged."}
+            {error ? "Connect analytics endpoint." : "Ranker output logged."}
           </CardBody>
         </Card>
         <Card>
@@ -53,7 +73,7 @@ export default async function AnalyticsPage() {
               Top Goals
             </p>
             <h3 className="text-2xl font-semibold">
-              {summary.data?.top_goals?.length ?? 0}
+              {summary?.top_goals?.length ?? 0}
             </h3>
           </CardHeader>
           <CardBody className="text-sm text-slate-500">
@@ -70,9 +90,9 @@ export default async function AnalyticsPage() {
           </p>
         </CardHeader>
         <CardBody>
-          {summary.data?.top_goals?.length ? (
+          {summary?.top_goals?.length ? (
             <div className="space-y-3">
-              {summary.data.top_goals.map((goal) => (
+              {summary.top_goals.map((goal) => (
                 <div
                   key={goal.goal}
                   className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3"
@@ -89,8 +109,8 @@ export default async function AnalyticsPage() {
             </div>
           ) : (
             <EmptyState
-              title="Analytics not configured"
-              description="Wire the backend analytics endpoint to populate KPIs."
+              title={t("empty_analytics_title")}
+              description={t("empty_analytics_desc")}
             />
           )}
         </CardBody>

@@ -20,20 +20,14 @@ import {
   type RecommendationResponse,
 } from "@/lib/api";
 import { demoCampaigns, demoInfluencers } from "@/lib/demo-data";
+import { useI18n } from "@/lib/i18n";
 
 type CampaignDetailPageProps = {
   params: { id: string };
 };
 
-const tabs = [
-  { label: "Overview", value: "overview" },
-  { label: "Influencers", value: "influencers" },
-  { label: "Strategy", value: "strategy" },
-  { label: "Performance", value: "performance" },
-  { label: "Audit", value: "audit" },
-];
-
 export default function CampaignDetailPage({ params }: CampaignDetailPageProps) {
+  const { t } = useI18n();
   const campaignId = params.id;
   const campaign = useMemo<CampaignInput>(() => {
     return (
@@ -57,6 +51,14 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [isLoadingStrategy, setIsLoadingStrategy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const tabs = [
+    { label: t("tab_overview"), value: "overview" },
+    { label: t("tab_influencers"), value: "influencers" },
+    { label: t("tab_strategy"), value: "strategy" },
+    { label: t("tab_performance"), value: "performance" },
+    { label: t("tab_audit"), value: "audit" },
+  ];
 
   useEffect(() => {
     if (activeTab === "strategy") {
@@ -184,7 +186,9 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
                 </p>
               </div>
               <Button onClick={handleRecommendation} disabled={isLoadingRecs}>
-                {isLoadingRecs ? "Running..." : "Run Recommendation"}
+                {isLoadingRecs
+                  ? "Running..."
+                  : t("action_run_recommendation")}
               </Button>
             </CardHeader>
             <CardBody>
@@ -235,8 +239,8 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
                 </div>
               ) : (
                 <EmptyState
-                  title="No recommendations yet"
-                  description="Run the recommendation engine to rank top-fit influencers."
+                  title={t("empty_recommendations_title")}
+                  description={t("empty_recommendations_desc")}
                 />
               )}
               {error && activeTab === "influencers" ? (
@@ -260,7 +264,9 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
                 </p>
               </div>
               <Button onClick={handleStrategy} disabled={isLoadingStrategy}>
-                {isLoadingStrategy ? "Generating..." : "Generate Strategy"}
+                {isLoadingStrategy
+                  ? "Generating..."
+                  : t("action_generate_strategy_button")}
               </Button>
             </CardHeader>
             <CardBody>
@@ -272,8 +278,8 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
                 </div>
               ) : (
                 <EmptyState
-                  title="No strategy draft"
-                  description="Generate recommendations first, then draft a strategy with the agent."
+                  title={t("empty_strategy_title")}
+                  description={t("empty_strategy_desc")}
                 />
               )}
               {error ? (
@@ -313,8 +319,8 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
                   ))
                 ) : (
                   <EmptyState
-                    title="No trace yet"
-                    description="Generate a strategy to see planning + review trace steps."
+                    title={t("empty_trace_title")}
+                    description={t("empty_trace_desc")}
                   />
                 )}
               </div>
