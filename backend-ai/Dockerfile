@@ -8,6 +8,7 @@ ENV PYTHONUNBUFFERED=1
 RUN pip install --no-cache-dir fastapi uvicorn scikit-learn numpy pandas pydantic
 
 COPY app ./app
+COPY eval ./eval
 
 EXPOSE 8000
 
