@@ -132,6 +132,15 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
     setIsLoadingStrategy(false);
   }
 
+  if (!campaign) {
+    return (
+      <EmptyState
+        title="Campaign not found"
+        description="This campaign does not exist or is still loading."
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -139,11 +148,11 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="info">Campaign</Badge>
             <h2 className="text-2xl font-semibold text-slate-900">
-              {campaign?.brand_name ?? "Campaign"}
+              {campaign.brand_name}
             </h2>
           </div>
           <p className="text-sm text-slate-500">
-            {campaign?.description ?? "Campaign details are loading."}
+            {campaign.description}
           </p>
         </CardHeader>
         <CardBody>
@@ -154,7 +163,7 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
               <Skeleton className="h-16" />
               <Skeleton className="h-16" />
             </div>
-          ) : campaign ? (
+          ) : (
             <div className="grid gap-4 md:grid-cols-4">
               <SummaryItem label="Goal" value={campaign.goal} />
               <SummaryItem label="Region" value={campaign.target_region} />
@@ -164,11 +173,6 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
                 value={`$${campaign.budget.toLocaleString()}`}
               />
             </div>
-          ) : (
-            <EmptyState
-              title="Campaign not found"
-              description={campaignError ?? "Unable to load campaign details."}
-            />
           )}
         </CardBody>
       </Card>
