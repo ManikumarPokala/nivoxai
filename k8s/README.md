@@ -43,6 +43,12 @@ kubectl apply -f k8s/backend-api.yaml
 kubectl apply -f k8s/frontend.yaml
 ```
 
+## Kustomize (dev overlay)
+
+```
+kubectl kustomize k8s/overlays/aws-dev | kubectl apply -f -
+```
+
 ## Verify
 
 ```

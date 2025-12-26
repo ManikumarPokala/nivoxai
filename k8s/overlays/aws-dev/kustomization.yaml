@@ -3,9 +3,7 @@ kind: Kustomization
 namespace: nivoxai-dev
 
 resources:
-  - ../../backend-ai.yaml
-  - ../../backend-api.yaml
-  - ../../frontend.yaml
+  - ../../base/core
   - ./namespace.yaml
   - ./configmap.yaml
   - ./secret.template.yaml

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nivoxai-config
+  namespace: nivoxai
+data:
+  POSTGRES_DB: "nivoxai"
+  POSTGRES_USER: "postgres"
+  PGHOST: "postgres"
+  PGPORT: "5432"
+  PGDATABASE: "nivoxai"
+  PGUSER: "postgres"
+  PORT: "4000"
+  AI_SERVICE_URL: "http://backend-ai:8000"
+  NEXT_PUBLIC_API_BASE_URL: "http://backend-api:4000"
+  NEXT_PUBLIC_ANALYTICS_URL: "http://backend-ai:8000"

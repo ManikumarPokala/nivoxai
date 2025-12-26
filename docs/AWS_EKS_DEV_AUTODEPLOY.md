@@ -54,6 +54,12 @@ On push to `main`:
 3) Update deployment images with the `sha-<shortsha>` tags
 4) Wait for rollouts to complete
 
+You can also render the overlay locally:
+
+```bash
+kubectl kustomize k8s/overlays/aws-dev
+```
+
 ## Verify
 
 ```bash
