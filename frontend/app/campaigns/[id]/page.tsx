@@ -10,6 +10,7 @@ import Tabs from "@/components/ui/Tabs";
 import {
   chatStrategy,
   getAgentStatus,
+  getCampaignById,
   getModelStatus,
   getSampleRecommendation,
   recommend,
@@ -19,7 +20,7 @@ import {
   type ModelStatus,
   type RecommendationResponse,
 } from "@/lib/api";
-import { demoCampaigns, demoInfluencers } from "@/lib/demo-data";
+import { demoInfluencers } from "@/lib/demo-data";
 import { useI18n } from "@/lib/i18n";
 
 type CampaignDetailPageProps = {
@@ -29,19 +30,9 @@ type CampaignDetailPageProps = {
 export default function CampaignDetailPage({ params }: CampaignDetailPageProps) {
   const { t } = useI18n();
   const campaignId = params.id;
-  const campaign = useMemo<CampaignInput>(() => {
-    return (
-      demoCampaigns.find((item) => item.id === campaignId) ?? {
-        id: campaignId,
-        brand_name: "Custom Campaign",
-        goal: "Define a campaign objective",
-        target_region: "Region",
-        target_age_range: "18-34",
-        budget: 20000,
-        description: "Add a short campaign brief to personalize recommendations.",
-      }
-    );
-  }, [campaignId]);
+  const [campaign, setCampaign] = useState<CampaignInput | null>(null);
+  const [campaignError, setCampaignError] = useState<string | null>(null);
+  const [isCampaignLoading, setIsCampaignLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState("overview");
   const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
@@ -51,6 +42,22 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [isLoadingStrategy, setIsLoadingStrategy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setIsCampaignLoading(true);
+    getCampaignById(campaignId).then((result) => {
+      if (!active) {
+        return;
+      }
+      setCampaign(result.data);
+      setCampaignError(result.error);
+      setIsCampaignLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [campaignId]);
 
   const tabs = [
     { label: t("tab_overview"), value: "overview" },
@@ -70,6 +77,10 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
   }, [activeTab]);
 
   async function handleRecommendation() {
+    if (!campaign) {
+      setError("Campaign data is not available.");
+      return;
+    }
     setIsLoadingRecs(true);
     setError(null);
 
@@ -85,6 +96,10 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
   }
 
   async function handleStrategy() {
+    if (!campaign) {
+      setError("Campaign data is not available.");
+      return;
+    }
     setIsLoadingStrategy(true);
     setError(null);
 
@@ -120,20 +135,37 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="info">Campaign</Badge>
             <h2 className="text-2xl font-semibold text-slate-900">
-              {campaign.brand_name}
+              {campaign?.brand_name ?? "Campaign"}
             </h2>
           </div>
           <p className="text-sm text-slate-500">
-            {campaign.description}
+            {campaign?.description ?? "Campaign details are loading."}
           </p>
         </CardHeader>
         <CardBody>
-          <div className="grid gap-4 md:grid-cols-4">
-            <SummaryItem label="Goal" value={campaign.goal} />
-            <SummaryItem label="Region" value={campaign.target_region} />
-            <SummaryItem label="Age Range" value={campaign.target_age_range} />
-            <SummaryItem label="Budget" value={`$${campaign.budget.toLocaleString()}`} />
-          </div>
+          {isCampaignLoading ? (
+            <div className="grid gap-4 md:grid-cols-4">
+              <Skeleton className="h-16" />
+              <Skeleton className="h-16" />
+              <Skeleton className="h-16" />
+              <Skeleton className="h-16" />
+            </div>
+          ) : campaign ? (
+            <div className="grid gap-4 md:grid-cols-4">
+              <SummaryItem label="Goal" value={campaign.goal} />
+              <SummaryItem label="Region" value={campaign.target_region} />
+              <SummaryItem label="Age Range" value={campaign.target_age_range} />
+              <SummaryItem
+                label="Budget"
+                value={`$${campaign.budget.toLocaleString()}`}
+              />
+            </div>
+          ) : (
+            <EmptyState
+              title="Campaign not found"
+              description={campaignError ?? "Unable to load campaign details."}
+            />
+          )}
         </CardBody>
       </Card>
 
@@ -212,7 +244,10 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
                             #{index + 1} {influencer?.name ?? rec.influencer_id}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {influencer?.platform ?? "Multi-platform"} • {influencer?.region ?? campaign.target_region}
+                            {influencer?.platform ?? "Multi-platform"} •{" "}
+                            {influencer?.region ??
+                              campaign?.target_region ??
+                              "Region"}
                           </p>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {rec.reasons.slice(0, 3).map((reason) => (

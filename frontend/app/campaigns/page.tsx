@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/Table";
-import { demoCampaigns } from "@/lib/demo-data";
-import type { CampaignInput } from "@/lib/api";
+import {
+  createCampaign,
+  getCampaigns,
+  type CampaignInput,
+} from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
 const statusMap: Record<string, "success" | "warning" | "info"> = {
@@ -21,12 +24,34 @@ export default function CampaignsPage() {
   const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [campaigns, setCampaigns] = useState<CampaignInput[]>(demoCampaigns);
+  const [campaigns, setCampaigns] = useState<CampaignInput[]>([]);
   const [statusById, setStatusById] = useState<Record<string, string>>({
     "camp-demo-001": "Active",
     "camp-demo-002": "Active",
     "camp-demo-003": "Draft",
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    getCampaigns().then((result) => {
+      if (!active) {
+        return;
+      }
+      if (result.data) {
+        const payload = result.data as CampaignInput[] | { campaigns?: CampaignInput[] };
+        const list = Array.isArray(payload) ? payload : payload.campaigns ?? [];
+        setCampaigns(list);
+      }
+      setError(result.error);
+      setIsLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredCampaigns = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -41,10 +66,23 @@ export default function CampaignsPage() {
     );
   }, [campaigns, search]);
 
-  function handleCreateCampaign(formData: CampaignInput) {
-    setCampaigns((prev) => [formData, ...prev]);
-    setStatusById((prev) => ({ ...prev, [formData.id]: "Draft" }));
-    setIsModalOpen(false);
+  async function handleCreateCampaign(formData: {
+    title: string;
+    country: string;
+    budget: number;
+  }) {
+    const result = await createCampaign(formData);
+    if (result.data) {
+      const created = (result.data as CampaignInput | { campaign?: CampaignInput })
+        .campaign ?? (result.data as CampaignInput);
+      if (created?.id) {
+        setCampaigns((prev) => [created, ...prev]);
+        setStatusById((prev) => ({ ...prev, [created.id]: "Draft" }));
+      }
+      setIsModalOpen(false);
+      return;
+    }
+    setError(result.error ?? "Failed to create campaign.");
   }
 
   return (
@@ -75,7 +113,13 @@ export default function CampaignsPage() {
           </div>
         </CardHeader>
         <CardBody>
-          {filteredCampaigns.length === 0 ? (
+          {isLoading ? (
+            <div className="grid gap-3">
+              <div className="h-16 rounded-2xl bg-slate-100" />
+              <div className="h-16 rounded-2xl bg-slate-100" />
+              <div className="h-16 rounded-2xl bg-slate-100" />
+            </div>
+          ) : filteredCampaigns.length === 0 ? (
             <EmptyState
               title={t("empty_campaigns_title")}
               description={t("empty_campaigns_desc")}
@@ -128,6 +172,9 @@ export default function CampaignsPage() {
               </TableBody>
             </Table>
           )}
+          {error ? (
+            <p className="mt-3 text-xs text-rose-600">{error}</p>
+          ) : null}
         </CardBody>
       </Card>
 
@@ -153,23 +200,19 @@ export default function CampaignsPage() {
 }
 
 type CampaignFormProps = {
-  onSubmit: (campaign: CampaignInput) => void;
+  onSubmit: (campaign: { title: string; country: string; budget: number }) => void;
 };
 
 function CampaignForm({ onSubmit }: CampaignFormProps) {
-  const [formState, setFormState] = useState<CampaignInput>({
-    id: `camp-${Math.random().toString(36).slice(2, 8)}`,
-    brand_name: "",
-    goal: "",
-    target_region: "",
-    target_age_range: "",
+  const [formState, setFormState] = useState({
+    title: "",
+    country: "",
     budget: 0,
-    description: "",
   });
 
-  function updateField<K extends keyof CampaignInput>(
+  function updateField<K extends keyof typeof formState>(
     key: K,
-    value: CampaignInput[K]
+    value: (typeof formState)[K]
   ) {
     setFormState((prev) => ({ ...prev, [key]: value }));
   }
@@ -183,35 +226,19 @@ function CampaignForm({ onSubmit }: CampaignFormProps) {
       }}
     >
       <input
-        value={formState.brand_name}
-        onChange={(event) => updateField("brand_name", event.target.value)}
-        placeholder="Brand name"
+        value={formState.title}
+        onChange={(event) => updateField("title", event.target.value)}
+        placeholder="Campaign title"
         className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
         required
       />
       <input
-        value={formState.goal}
-        onChange={(event) => updateField("goal", event.target.value)}
-        placeholder="Goal"
+        value={formState.country}
+        onChange={(event) => updateField("country", event.target.value)}
+        placeholder="Target country"
         className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
         required
       />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input
-          value={formState.target_region}
-          onChange={(event) => updateField("target_region", event.target.value)}
-          placeholder="Target region"
-          className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-          required
-        />
-        <input
-          value={formState.target_age_range}
-          onChange={(event) => updateField("target_age_range", event.target.value)}
-          placeholder="Target age range"
-          className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-          required
-        />
-      </div>
       <input
         type="number"
         value={formState.budget}
@@ -219,13 +246,6 @@ function CampaignForm({ onSubmit }: CampaignFormProps) {
         placeholder="Budget"
         className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
         required
-      />
-      <textarea
-        value={formState.description}
-        onChange={(event) => updateField("description", event.target.value)}
-        placeholder="Campaign description"
-        className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-        rows={4}
       />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={() => onSubmit(formState)}>

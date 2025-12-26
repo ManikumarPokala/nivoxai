@@ -127,6 +127,28 @@ export async function getSampleRecommendation(): Promise<
   return fetchJson<RecommendationResponse>(`/api/ai/sample-recommendation`);
 }
 
+export async function getCampaigns(): Promise<ApiResult<CampaignInput[]>> {
+  return fetchJson<CampaignInput[]>(`/api/campaigns`);
+}
+
+export async function getCampaignById(
+  campaignId: string
+): Promise<ApiResult<CampaignInput>> {
+  return fetchJson<CampaignInput>(`/api/campaigns/${campaignId}`);
+}
+
+export async function createCampaign(input: {
+  title: string;
+  country: string;
+  budget: number;
+}): Promise<ApiResult<CampaignInput>> {
+  return fetchJson<CampaignInput>(`/api/campaigns`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
 export async function recommend(
   campaign: CampaignInput,
   influencers: InfluencerInput[]

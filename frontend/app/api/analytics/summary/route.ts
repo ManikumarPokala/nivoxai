@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-
-const BACKEND_API_BASE_URL =
-  process.env.BACKEND_API_BASE_URL ?? "http://backend-api:4000";
+import { BACKEND_API_BASE_URL } from "@/lib/urls";
 
 export async function GET() {
   try {

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { getAnalyticsSummary, type AnalyticsSummary } from "@/lib/analytics";
-import { getModelStatus, type ModelStatus } from "@/lib/api";
+import { getHealthAI, getHealthAPI, getModelStatus, type ModelStatus } from "@/lib/api";
 import { demoCampaigns } from "@/lib/demo-data";
 import { useI18n } from "@/lib/i18n";
 
@@ -32,6 +32,8 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
+  const [aiHealth, setAiHealth] = useState<boolean | null>(null);
+  const [apiHealth, setApiHealth] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -47,6 +49,16 @@ export default function DashboardPage() {
         return;
       }
       setModelStatus(result.data);
+    });
+    getHealthAI().then((result) => {
+      if (active) {
+        setAiHealth(Boolean(result.data));
+      }
+    });
+    getHealthAPI().then((result) => {
+      if (active) {
+        setApiHealth(Boolean(result.data));
+      }
     });
     return () => {
       active = false;
@@ -113,6 +125,24 @@ export default function DashboardPage() {
             <Badge variant={modelStatus ? "success" : "warning"}>
               {modelStatus?.model_version ?? "Connect AI service"}
             </Badge>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span className="flex items-center gap-1">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    aiHealth ? "bg-emerald-500" : "bg-amber-400"
+                  }`}
+                />
+                AI
+              </span>
+              <span className="flex items-center gap-1">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    apiHealth ? "bg-emerald-500" : "bg-amber-400"
+                  }`}
+                />
+                API
+              </span>
+            </div>
           </CardBody>
         </Card>
       </section>

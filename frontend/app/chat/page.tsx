@@ -1,13 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
-
-type ChatResponseBody = {
-  reply: string;
-};
+import { chatStrategy, type RecommendationResponse } from "@/lib/api";
 
 export default function StrategyChatPage() {
   const [campaignSummary, setCampaignSummary] = useState(
@@ -36,7 +30,7 @@ export default function StrategyChatPage() {
       description: campaignSummary,
     };
 
-    const recommendations = {
+    const recommendations: RecommendationResponse = {
       campaign_id: "camp-ui-1",
       recommendations: [
         {
@@ -53,22 +47,11 @@ export default function StrategyChatPage() {
     };
 
     try {
-      const res = await fetch(`${API_BASE_URL}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaign,
-          recommendations,
-          question,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`API returned ${res.status}`);
+      const result = await chatStrategy(campaign, recommendations, question);
+      if (result.error || !result.data) {
+        throw new Error(result.error ?? "Strategy request failed");
       }
-
-      const data = (await res.json()) as ChatResponseBody;
-      setReply(data.reply);
+      setReply(result.data.reply);
     } catch (err) {
       console.error("Chat API failed", err);
       setError("Could not get a strategy reply. Please check backend services.");

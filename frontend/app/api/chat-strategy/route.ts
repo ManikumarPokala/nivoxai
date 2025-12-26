@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-
-const BACKEND_AI_BASE_URL =
-  process.env.BACKEND_AI_BASE_URL ?? "http://backend-ai:8000";
+import { BACKEND_AI_BASE_URL } from "@/lib/urls";
 
 export async function POST(request: Request) {
   try {
