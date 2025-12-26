@@ -22,7 +22,7 @@ const recentActivity = [
   },
   {
     title: "RAG discovery query",
-    detail: ""Southeast Asia skincare creators"",
+    detail: "Southeast Asia skincare creators",
     time: "3 hours ago",
   },
 ];
