@@ -22,6 +22,8 @@ services:
     build: ./backend-ai
     container_name: nivoxai-backend-ai
     restart: always
+    environment:
+      CORS_ORIGINS: http://localhost:3000
     ports:
       - "8000:8000"
     healthcheck:
@@ -46,6 +48,7 @@ services:
     environment:
       PORT: 4000
       AI_SERVICE_URL: http://backend-ai:8000
+      CORS_ORIGINS: http://localhost:3000
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: nivoxai

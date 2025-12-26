@@ -6,6 +6,7 @@ from typing import Literal, List
 from uuid import uuid4
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.models.schemas import (
@@ -22,6 +23,16 @@ app = FastAPI(
     title="NivoxAI Backend AI Service",
     description="AI microservice for influencer recommendations, RAG search, and agentic strategy generation.",
     version="0.2.0",
+)
+
+cors_origins_env = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
+cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -89,6 +100,7 @@ def health_check() -> dict:
     health checks to verify the AI service is up.
     """
     return {"status": "ok"}
+
 
 @app.get("/model/status", tags=["Model"])
 def model_status():

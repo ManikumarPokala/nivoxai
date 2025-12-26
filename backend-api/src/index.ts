@@ -31,6 +31,15 @@ interface AnalyticsSummaryResponse {
 }
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL ?? "http://localhost:8000";
+const corsOriginsEnv = process.env.CORS_ORIGINS ?? "http://localhost:3000";
+const corsOrigins = corsOriginsEnv
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const corsOptions = {
+  origin: corsOrigins,
+  credentials: true,
+};
 const PORT = Number(process.env.PORT) || 4000;
 
 const pool = new Pool({
@@ -93,7 +102,8 @@ pool
   });
 
 const app = express();
-app.use(cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 app.get("/health", async (_req: Request, res: Response) => {

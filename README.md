@@ -181,6 +181,8 @@ PostgreSQL 16
 6. Local Setup & Execution
 docker compose up -d --build
 
+If the UI shows “fetch failed”, rebuild with `CORS_ORIGINS=http://localhost:3000` set for backend services.
+
 Health Endpoints
 
 Frontend: http://localhost:3000
