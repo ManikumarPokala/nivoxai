@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+from datetime import datetime, timezone
 from typing import Literal, List
 
 from uuid import uuid4
@@ -320,11 +321,19 @@ def chat_strategy(req: ChatRequest) -> ChatResponse:
         }
         for r in req.recommendations.recommendations
     ]
-    result = runner.run_strategy_agent(
-        campaign=normalized_campaign,
-        recommendations=recs,
-        user_question=req.question,
-    )
+    try:
+        result = runner.run_strategy_agent(
+            campaign=normalized_campaign,
+            recommendations=recs,
+            user_question=req.question,
+        )
+        runner.LAST_RUN_AT = datetime.now(timezone.utc).isoformat()
+        runner.LAST_ERROR = None
+        logger.info("Agent state updated: last_run_at=%s", runner.LAST_RUN_AT)
+    except Exception as exc:
+        runner.LAST_ERROR = str(exc)
+        logger.info("Agent state updated: last_run_at=%s", runner.LAST_RUN_AT)
+        raise
     ms = (time.perf_counter() - start_time) * 1000
     total_ms = max(1, int(round(ms)))
     logger.info("chat-strategy executed for campaign %s", campaign.id)
