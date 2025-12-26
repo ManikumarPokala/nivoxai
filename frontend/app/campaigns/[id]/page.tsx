@@ -98,6 +98,7 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
   }
 
   async function handleStrategy() {
+    console.log("Generate Strategy clicked", { campaignId });
     if (!campaign) {
       setError("Campaign data is not available.");
       return;
