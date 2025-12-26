@@ -1,6 +1,12 @@
 import "./globals.css";
 import type { ReactNode } from "react";
-import SidebarShell from "./components/SidebarShell";
+import type { Metadata } from "next";
+import SidebarShell from "@/components/SidebarShell";
+
+export const metadata: Metadata = {
+  title: "NivoxAI",
+  description: "AI-powered campaign analytics and recommendations",
+};
 
 type RootLayoutProps = {
   children: ReactNode;

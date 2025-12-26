@@ -1,6 +1,7 @@
-from typing import Literal
+from typing import Literal, List, Optional
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.models.schemas import (
@@ -10,27 +11,62 @@ from app.models.schemas import (
     RecommendationResponse,
 )
 from app.services.chat_strategy import generate_strategy_reply
-from app.services.rag import InfluencerDoc, search_influencers
+from app.services.rag import search_influencers
 from app.services.recommender import compute_recommendations
+from app.analytics.router import router as analytics_router
+
+# -------------------------------------------------
+# APP INITIALIZATION (SINGLE SOURCE OF TRUTH)
+# -------------------------------------------------
 
 app = FastAPI(
     title="NivoxAI Backend AI Service",
-    description="AI microservice for influencer recommendations, RAG search, and agentic strategy generation.",
-    version="0.2.0",
+    description="AI microservice for influencer recommendations, RAG search, analytics, and agentic strategy generation.",
+    version="0.2.1",
 )
 
+# -------------------------------------------------
+# CORS (safe defaults for local/dev + Docker compose)
+# -------------------------------------------------
+# In production, restrict origins (e.g., your domain).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # tighten later
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# --------- RAG MODELS ---------
+# Register routers
+app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 
+# -------------------------------------------------
+# BASIC ROUTES
+# -------------------------------------------------
+
+@app.get("/", tags=["Root"])
+def root():
+    return {"service": "nivoxai-backend-ai", "status": "ok"}
+
+# -------------------------------------------------
+# HEALTH
+# -------------------------------------------------
+
+@app.get("/health", tags=["Health"])
+def health_check():
+    # Keep healthcheck cheap/fast; do deeper checks in /analytics endpoints.
+    return {"status": "ok"}
+
+# -------------------------------------------------
+# RAG MODELS
+# -------------------------------------------------
 
 class RagQuery(BaseModel):
-    """Incoming query model for influencer RAG search."""
     query: str
     top_k: int = 5
 
 
 class RagInfluencerHit(BaseModel):
-    """Single RAG search hit for an influencer."""
     id: str
     name: str
     bio: str
@@ -38,9 +74,9 @@ class RagInfluencerHit(BaseModel):
     region: str
     score: float
 
-
-# --------- CHAT / STRATEGY MODELS ---------
-
+# -------------------------------------------------
+# CHAT / STRATEGY MODELS
+# -------------------------------------------------
 
 class ChatMessage(BaseModel):
     role: Literal["user", "system", "assistant"]
@@ -48,59 +84,35 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """
-    Request payload for the strategy / agentic chat endpoint.
-
-    - campaign: the campaign brief and targeting constraints
-    - recommendations: ranked influencers from the /recommend endpoint
-    - question: optional user question, e.g. “How should I phase this campaign?”
-    """
     campaign: Campaign
     recommendations: RecommendationResponse
-    question: str | None = None
+    question: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
-    """LLM / agent reply as plain text."""
     reply: str
 
+# -------------------------------------------------
+# RECOMMENDATION ENDPOINTS
+# -------------------------------------------------
 
-# --------- HEALTH ---------
-
-
-@app.get("/health")
-def health_check() -> dict:
-    """
-    Basic health endpoint used by the Node backend and Docker
-    health checks to verify the AI service is up.
-    """
-    return {"status": "ok"}
-
-
-# --------- RECOMMENDATION ENDPOINTS ---------
-
-
-@app.post("/recommend", response_model=RecommendationResponse)
-def recommend(request: RecommendationRequest) -> RecommendationResponse:
-    """
-    Main recommendation endpoint.
-
-    Delegates to app.services.recommender.compute_recommendations,
-    which can internally combine heuristic and ML-based scoring
-    for influencer–campaign fit.
-    """
+@app.post(
+    "/recommend",
+    response_model=RecommendationResponse,
+    response_model_exclude_none=True,
+    tags=["Recommendation"],
+)
+def recommend(request: RecommendationRequest):
     return compute_recommendations(request)
 
 
-@app.get("/sample-recommendation", response_model=RecommendationResponse)
-def sample_recommendation() -> RecommendationResponse:
-    """
-    Convenience endpoint that returns a sample campaign +
-    a small influencer set to demonstrate the ranking logic.
-
-    Useful for smoke tests and demos without needing frontend input.
-    """
-
+@app.get(
+    "/sample-recommendation",
+    response_model=RecommendationResponse,
+    response_model_exclude_none=True,
+    tags=["Recommendation"],
+)
+def sample_recommendation():
     campaign = Campaign(
         id="camp-001",
         brand_name="Luma Beauty",
@@ -111,7 +123,7 @@ def sample_recommendation() -> RecommendationResponse:
         description="Skincare and beauty focus for humid climates with glow routines.",
     )
 
-    influencers: list[Influencer] = [
+    influencers: List[Influencer] = [
         Influencer(
             id="inf-001",
             name="Nina Glow",
@@ -189,24 +201,19 @@ def sample_recommendation() -> RecommendationResponse:
     req = RecommendationRequest(campaign=campaign, influencers=influencers)
     return compute_recommendations(req)
 
+# -------------------------------------------------
+# RAG ENDPOINT
+# -------------------------------------------------
 
-# --------- RAG ENDPOINTS ---------
-
-
-@app.post("/rag/influencers", response_model=list[RagInfluencerHit])
-def rag_influencers(query: RagQuery) -> list[RagInfluencerHit]:
-    """
-    RAG-style influencer search.
-
-    Uses app.services.rag.search_influencers to retrieve the most relevant
-    influencer documents for a free-text query (e.g. “Thai skincare KOLs”).
-    """
-
-    results: list[tuple[InfluencerDoc, float]] = search_influencers(
-        query.query, query.top_k
-    )
-
-    hits: list[RagInfluencerHit] = [
+@app.post(
+    "/rag/influencers",
+    response_model=List[RagInfluencerHit],
+    response_model_exclude_none=True,
+    tags=["RAG"],
+)
+def rag_influencers(query: RagQuery):
+    results = search_influencers(query.query, query.top_k)
+    return [
         RagInfluencerHit(
             id=doc.id,
             name=doc.name,
@@ -217,26 +224,21 @@ def rag_influencers(query: RagQuery) -> list[RagInfluencerHit]:
         )
         for doc, score in results
     ]
-    return hits
 
+# -------------------------------------------------
+# STRATEGY / AGENTIC CHAT
+# -------------------------------------------------
 
-# --------- STRATEGY / AGENTIC CHAT ---------
+def _model_to_dict(model):
+    """Pydantic v2 uses model_dump(); v1 uses dict()."""
+    if hasattr(model, "model_dump"):
+        return model.model_dump()
+    return model.dict()
 
-
-@app.post("/chat-strategy", response_model=ChatResponse)
-def chat_strategy(req: ChatRequest) -> ChatResponse:
-    """
-    Strategy endpoint.
-
-    Delegates to app.services.chat_strategy.generate_strategy_reply,
-    which is implemented as an LLM-based, tool-using agent that:
-    - Reads the campaign brief and ranked influencers
-    - Optionally calls internal tools (e.g., recommendation summary)
-    - Produces a structured, actionable KOL campaign strategy.
-    """
-
+@app.post("/chat-strategy", response_model=ChatResponse, tags=["Agent"])
+def chat_strategy(req: ChatRequest):
     reply = generate_strategy_reply(
-        campaign=req.campaign.dict(),
+        campaign=_model_to_dict(req.campaign),
         recommendations=[
             {
                 "influencer_id": r.influencer_id,
@@ -248,9 +250,3 @@ def chat_strategy(req: ChatRequest) -> ChatResponse:
         user_question=req.question,
     )
     return ChatResponse(reply=reply)
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
