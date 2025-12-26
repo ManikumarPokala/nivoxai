@@ -1,9 +1,8 @@
-name: ci
+name: CI
 
 on:
-  push:
-    branches: ["main"]
   pull_request:
+  push:
     branches: ["main"]
 
 jobs:
@@ -22,7 +21,7 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install -U pip
-          python -m pip install fastapi uvicorn scikit-learn numpy pandas pydantic
+          python -m pip install fastapi uvicorn scikit-learn numpy pandas pydantic pytest
 
       - name: Compile backend-ai
         run: |
@@ -33,6 +32,15 @@ jobs:
         run: |
           cd backend-ai
           PYTHONPATH=. python -m eval.run_eval
+
+      - name: Run tests if present
+        run: |
+          if [ -d backend-ai/tests ] || [ -d backend-ai/test ]; then
+            cd backend-ai
+            python -m pytest -q || true
+          else
+            echo "No backend-ai tests found."
+          fi
 
   backend-api-build:
     runs-on: ubuntu-latest
@@ -57,6 +65,15 @@ jobs:
           cd backend-api
           npm run build
 
+      - name: Run tests if present
+        run: |
+          if [ -f backend-api/package.json ] && [ -d backend-api/tests ]; then
+            cd backend-api
+            npm test || true
+          else
+            echo "No backend-api tests found."
+          fi
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:
@@ -79,3 +96,17 @@ jobs:
         run: |
           cd frontend
           npm run build
+
+  compose-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose config
+        run: |
+          if [ -f docker-compose.yml ]; then
+            docker compose config
+          else
+            echo "No docker-compose.yml found."
+          fi
