@@ -41,8 +41,7 @@ export default function CampaignsPage() {
         return;
       }
       if (result.data) {
-        const payload = result.data as CampaignInput[] | { campaigns?: CampaignInput[] };
-        const list = Array.isArray(payload) ? payload : payload.campaigns ?? [];
+        const list = normalizeCampaignList(result.data);
         setCampaigns(list);
       }
       setError(result.error);
@@ -73,9 +72,8 @@ export default function CampaignsPage() {
   }) {
     const result = await createCampaign(formData);
     if (result.data) {
-      const created = (result.data as CampaignInput | { campaign?: CampaignInput })
-        .campaign ?? (result.data as CampaignInput);
-      if (created?.id) {
+      const created = normalizeCampaignItem(result.data);
+      if (created.id) {
         setCampaigns((prev) => [created, ...prev]);
         setStatusById((prev) => ({ ...prev, [created.id]: "Draft" }));
       }
@@ -196,6 +194,33 @@ export default function CampaignsPage() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+type CampaignItemPayload = CampaignInput | { campaign?: CampaignInput };
+type CampaignListPayload = CampaignInput[] | { campaigns?: CampaignInput[] };
+
+function normalizeCampaignItem(payload: CampaignItemPayload): CampaignInput {
+  if (hasCampaign(payload)) {
+    return payload.campaign;
+  }
+  return payload;
+}
+
+function normalizeCampaignList(payload: CampaignListPayload): CampaignInput[] {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  return payload.campaigns ?? [];
+}
+
+function hasCampaign(payload: CampaignItemPayload): payload is { campaign: CampaignInput } {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "campaign" in payload &&
+    typeof (payload as { campaign?: CampaignInput }).campaign === "object" &&
+    (payload as { campaign?: CampaignInput }).campaign !== null
   );
 }
 
