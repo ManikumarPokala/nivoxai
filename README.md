@@ -179,7 +179,26 @@ Docker, Docker Compose
 PostgreSQL 16
 
 6. Local Setup & Execution
-docker compose up -d --build
+
+macOS (Docker Desktop, no sudo)
+
+1) Install Docker Desktop: https://www.docker.com/products/docker-desktop
+2) Start Docker Desktop (whale icon in menu bar)
+3) Run:
+   docker compose up -d --build
+
+Linux (Ubuntu)
+
+1) Install Docker Engine (https://docs.docker.com/engine/install/ubuntu/)
+2) Add your user to the docker group:
+   sudo usermod -aG docker $USER
+3) Log out and back in
+4) Run:
+   docker compose up -d --build
+
+Optional helper scripts:
+./scripts/dev-up.sh
+./scripts/dev-down.sh
 
 If the UI shows “fetch failed”, rebuild with `CORS_ORIGINS=http://localhost:3000` set for backend services.
 
@@ -228,6 +247,17 @@ Offline evaluation (NDCG@K, Recall@K)
 Agent orchestration & memory
 
 CI/CD with GitHub Actions
+
+Troubleshooting
+
+- docker: command not found
+  - macOS: install Docker Desktop
+  - Linux: install Docker Engine
+- Cannot connect to the Docker daemon
+  - macOS: start Docker Desktop
+  - Linux: start the docker service (`sudo systemctl start docker`)
+- sudo password prompt on macOS
+  - It uses your macOS login password, but Docker Desktop should not require sudo for Docker commands
 
 Kubernetes manifests
 
