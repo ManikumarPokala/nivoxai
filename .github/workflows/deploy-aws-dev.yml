@@ -51,6 +51,9 @@ jobs:
         with:
           version: "v1.29.0"
 
+      - name: Setup kustomize
+        uses: imranismail/setup-kustomize@v2
+
       - name: Configure kubeconfig
         run: aws eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_REGION}"
 
@@ -59,7 +62,7 @@ jobs:
           kubectl apply -f k8s/overlays/aws-dev/namespace.yaml
           kubectl apply -f k8s/overlays/aws-dev/configmap.yaml
           kubectl apply -f k8s/overlays/aws-dev/secret.template.yaml
-          kubectl apply -k k8s/overlays/aws-dev
+          kustomize build k8s/overlays/aws-dev | kubectl apply -f -
 
       - name: Rollout updated images
         run: |
