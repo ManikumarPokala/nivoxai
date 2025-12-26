@@ -1,5 +1,3 @@
-import { API_BASE_URL } from "./urls";
-
 export type AnalyticsSummary = {
   total_events: number;
   total_recommendations: number;
@@ -42,7 +40,7 @@ async function handleJsonResponse<T>(response: Response): Promise<ApiResult<T>> 
 export async function getAnalyticsSummary(): Promise<ApiResult<AnalyticsSummary>> {
   try {
     // Avoid caching so dashboards stay fresh in SSR and client transitions.
-    const response = await fetch(`${API_BASE_URL}/analytics/summary`, {
+    const response = await fetch(`/api/analytics/summary`, {
       cache: "no-store",
     });
     return await handleJsonResponse<AnalyticsSummary>(response);
@@ -56,10 +54,9 @@ export async function getCampaignAnalytics(
   campaignId: string
 ): Promise<ApiResult<CampaignAnalytics>> {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/analytics/campaign/${campaignId}`,
-      { cache: "no-store" }
-    );
+    const response = await fetch(`/api/analytics/campaign/${campaignId}`, {
+      cache: "no-store",
+    });
     return await handleJsonResponse<CampaignAnalytics>(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Request failed";

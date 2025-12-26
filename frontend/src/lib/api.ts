@@ -1,5 +1,3 @@
-import { AI_BASE_URL, API_BASE_URL } from "./urls";
-
 export type CampaignInput = {
   id: string;
   brand_name: string;
@@ -108,32 +106,32 @@ async function fetchJson<T>(
 }
 
 export async function getHealthAI(): Promise<ApiResult<{ status: string }>> {
-  return fetchJson<{ status: string }>(`${AI_BASE_URL}/health`);
+  return fetchJson<{ status: string }>(`/api/ai/health`);
 }
 
 export async function getHealthAPI(): Promise<ApiResult<{ status: string }>> {
-  return fetchJson<{ status: string }>(`${API_BASE_URL}/health`);
+  return fetchJson<{ status: string }>(`/api/health`);
 }
 
 export async function getModelStatus(): Promise<ApiResult<ModelStatus>> {
-  return fetchJson<ModelStatus>(`${AI_BASE_URL}/model/status`);
+  return fetchJson<ModelStatus>(`/api/ai/model-status`);
 }
 
 export async function getAgentStatus(): Promise<ApiResult<AgentStatus>> {
-  return fetchJson<AgentStatus>(`${AI_BASE_URL}/agent/status`);
+  return fetchJson<AgentStatus>(`/api/ai/agent-status`);
 }
 
 export async function getSampleRecommendation(): Promise<
   ApiResult<RecommendationResponse>
 > {
-  return fetchJson<RecommendationResponse>(`${AI_BASE_URL}/sample-recommendation`);
+  return fetchJson<RecommendationResponse>(`/api/ai/sample-recommendation`);
 }
 
 export async function recommend(
   campaign: CampaignInput,
   influencers: InfluencerInput[]
 ): Promise<ApiResult<RecommendationResponse>> {
-  return fetchJson<RecommendationResponse>(`${AI_BASE_URL}/recommend`, {
+  return fetchJson<RecommendationResponse>(`/api/recommendations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ campaign, influencers }),
@@ -145,7 +143,7 @@ export async function chatStrategy(
   recommendations: RecommendationResponse,
   question?: string | null
 ): Promise<ApiResult<ChatStrategyResponse>> {
-  return fetchJson<ChatStrategyResponse>(`${AI_BASE_URL}/chat-strategy`, {
+  return fetchJson<ChatStrategyResponse>(`/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ campaign, recommendations, question }),
@@ -156,7 +154,7 @@ export async function ragInfluencers(
   query: string,
   topK: number
 ): Promise<ApiResult<RagResponse>> {
-  return fetchJson<RagResponse>(`${AI_BASE_URL}/rag/influencers`, {
+  return fetchJson<RagResponse>(`/api/rag`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, top_k: topK }),
