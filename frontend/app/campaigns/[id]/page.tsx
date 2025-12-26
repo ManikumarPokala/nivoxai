@@ -115,7 +115,8 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
       return;
     }
 
-    const response = await chatStrategy(campaign, recs);
+    const payloadCampaign = buildStrategyCampaignPayload(campaign);
+    const response = await chatStrategy(payloadCampaign, recs);
     if (response.error || !response.data) {
       setError(response.error ?? "Strategy generation failed.");
       setIsLoadingStrategy(false);
@@ -427,6 +428,44 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
       ) : null}
     </div>
   );
+}
+
+function buildStrategyCampaignPayload(campaign: CampaignInput): CampaignInput & {
+  title: string;
+} {
+  const title =
+    (campaign as CampaignInput & { title?: string }).title ??
+    campaign.brand_name ??
+    "Demo Campaign";
+  const payload = {
+    id: campaign.id,
+    title,
+    brand_name: campaign.brand_name ?? "Demo Brand",
+    goal: campaign.goal ?? "Brand awareness and engagement",
+    target_region: campaign.target_region ?? (campaign as CampaignInput & { country?: string }).country ?? "Thailand",
+    target_age_range: campaign.target_age_range ?? "18-35",
+    description:
+      campaign.description ??
+      `Influencer campaign for ${title} targeting creators in ${
+        (campaign as CampaignInput & { country?: string }).country ?? "Asia"
+      }`,
+    budget: campaign.budget,
+  };
+
+  if (
+    !campaign.brand_name ||
+    !campaign.goal ||
+    !campaign.target_region ||
+    !campaign.target_age_range ||
+    !campaign.description
+  ) {
+    console.warn(
+      "Strategy payload filled with demo defaults for missing campaign fields.",
+      payload
+    );
+  }
+
+  return payload;
 }
 
 function SummaryItem({ label, value }: { label: string; value: string }) {
