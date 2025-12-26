@@ -242,3 +242,21 @@ Ability to translate AI research into deployable products
 Readiness to work in client-facing MarTech AI teams
 
 Strong alignment with Influmatch & Amity AI Labs
+
+## Offline Evaluation (Ranking Metrics)
+
+Run the offline ranking evaluation harness:
+
+cd backend-ai && python -m eval.run_eval
+
+Example output:
+
+=== Offline Ranking Eval ===
+Campaigns: 2
+- camp-eval-001 NDCG@5=0.87 P@5=0.80 R@5=0.67 | Baseline NDCG@5=0.62
+- camp-eval-002 NDCG@5=0.83 P@5=0.80 R@5=0.57 | Baseline NDCG@5=0.58
+
+Model (weighted ranker) vs Baseline (followers)
+NDCG@10: model 0.84 | baseline 0.61
+Precision@10: model 0.60 | baseline 0.40
+Recall@10: model 0.78 | baseline 0.52
