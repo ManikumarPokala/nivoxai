@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import time
 from typing import Literal, List
@@ -24,6 +25,8 @@ app = FastAPI(
     description="AI microservice for influencer recommendations, RAG search, and agentic strategy generation.",
     version="0.2.0",
 )
+
+logger = logging.getLogger(__name__)
 
 cors_origins_env = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
 cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
@@ -71,9 +74,24 @@ class ChatRequest(BaseModel):
     - recommendations: ranked influencers from the /recommend endpoint
     - question: optional user question, e.g. “How should I phase this campaign?”
     """
-    campaign: Campaign
+    campaign: "ChatCampaign"
     recommendations: RecommendationResponse
     question: str | None = None
+
+
+class ChatCampaign(BaseModel):
+    id: str
+    brand_name: str | None = None
+    goal: str | None = None
+    target_region: str | None = None
+    target_age_range: str | None = None
+    budget: float | None = None
+    description: str | None = None
+    title: str | None = None
+    country: str | None = None
+
+    class Config:
+        extra = "allow"
 
 
 class AgentStep(BaseModel):
@@ -283,6 +301,17 @@ def chat_strategy(req: ChatRequest) -> ChatResponse:
 
     request_id = uuid4().hex
     start_time = time.perf_counter()
+    campaign = req.campaign
+    normalized_campaign = {
+        "id": campaign.id,
+        "brand_name": campaign.brand_name or "Unknown Brand",
+        "goal": campaign.goal or "brand awareness",
+        "target_region": campaign.target_region or campaign.country or "global",
+        "target_age_range": campaign.target_age_range or "18-35",
+        "description": campaign.description or campaign.title or "",
+        "budget": campaign.budget or 0.0,
+    }
+
     recs = [
         {
             "influencer_id": r.influencer_id,
@@ -292,12 +321,13 @@ def chat_strategy(req: ChatRequest) -> ChatResponse:
         for r in req.recommendations.recommendations
     ]
     result = runner.run_strategy_agent(
-        campaign=req.campaign.dict(),
+        campaign=normalized_campaign,
         recommendations=recs,
         user_question=req.question,
     )
     ms = (time.perf_counter() - start_time) * 1000
     total_ms = max(1, int(round(ms)))
+    logger.info("chat-strategy executed for campaign %s", campaign.id)
     print(
         json.dumps(
             {
