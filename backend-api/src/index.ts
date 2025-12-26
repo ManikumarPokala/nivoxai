@@ -252,6 +252,77 @@ app.get("/analytics/summary", async (_req: Request, res: Response) => {
   }
 });
 
+/* ============================================================
+   Analytics — Campaign Level (JD Critical)
+============================================================ */
+
+app.get(
+  "/analytics/campaign/:campaignId",
+  async (req: Request, res: Response) => {
+    const { campaignId } = req.params;
+
+    try {
+      const recs = await pool.query<{ count: string }>(
+        `
+        SELECT COUNT(*) AS count
+        FROM recommendation_logs
+        WHERE campaign_id = $1
+        `,
+        [campaignId]
+      );
+
+      const events = await pool.query<{ count: string }>(
+        `
+        SELECT COUNT(*) AS count
+        FROM app_events
+        WHERE campaign_id = $1
+        `,
+        [campaignId]
+      );
+
+      const perf = await pool.query<{
+        impressions: string;
+        clicks: string;
+        spend: string;
+        revenue: string;
+      }>(
+        `
+        SELECT
+          COALESCE(SUM(impressions),0)::text AS impressions,
+          COALESCE(SUM(clicks),0)::text AS clicks,
+          COALESCE(SUM(spend),0)::text AS spend,
+          COALESCE(SUM(revenue),0)::text AS revenue
+        FROM campaign_results
+        WHERE campaign_id = $1
+        `,
+        [campaignId]
+      );
+
+      const impressions = Number(perf.rows[0]?.impressions ?? 0);
+      const clicks = Number(perf.rows[0]?.clicks ?? 0);
+      const spend = Number(perf.rows[0]?.spend ?? 0);
+      const revenue = Number(perf.rows[0]?.revenue ?? 0);
+
+      res.json({
+        campaign_id: campaignId,
+        total_events: Number(events.rows[0]?.count ?? 0),
+        total_recommendations: Number(recs.rows[0]?.count ?? 0),
+        impressions,
+        clicks,
+        ctr: impressions > 0 ? +((clicks / impressions) * 100).toFixed(2) : 0,
+        spend,
+        revenue,
+        roi: spend > 0 ? +(((revenue - spend) / spend) * 100).toFixed(2) : 0,
+        algo_version: "heuristic_v1",
+        model_version: "nivox-recommender@0.1.0",
+      });
+    } catch (error) {
+      console.error("Campaign analytics failed:", error);
+      res.status(500).json({ error: "Failed to load campaign analytics" });
+    }
+  }
+);
+
 app.listen(PORT, () => {
   console.log(`NivoxAI API server listening on port ${PORT}`);
 });
