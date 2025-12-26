@@ -19,21 +19,11 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4000
-          env:
-            - name: PORT
-              value: "4000"
-            - name: AI_SERVICE_URL
-              value: "http://backend-ai:8000"
-            - name: PGHOST
-              value: "postgres"
-            - name: PGPORT
-              value: "5432"
-            - name: PGDATABASE
-              value: "nivoxai"
-            - name: PGUSER
-              value: "postgres"
-            - name: PGPASSWORD
-              value: "postgres"
+          envFrom:
+            - configMapRef:
+                name: nivoxai-config
+            - secretRef:
+                name: nivoxai-secrets
           readinessProbe:
             httpGet:
               path: /health

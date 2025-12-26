@@ -19,11 +19,11 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
-          env:
-            - name: NEXT_PUBLIC_API_BASE_URL
-              value: "http://backend-api:4000"
-            - name: NEXT_PUBLIC_ANALYTICS_URL
-              value: "http://backend-ai:8000"
+          envFrom:
+            - configMapRef:
+                name: nivoxai-config
+            - secretRef:
+                name: nivoxai-secrets
           readinessProbe:
             httpGet:
               path: /

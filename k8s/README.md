@@ -34,7 +34,13 @@ minikube image load nivoxai-frontend:latest
 ## Apply manifests
 
 ```
-kubectl apply -f k8s/
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secret.yaml
+kubectl apply -f k8s/postgres.yaml
+kubectl apply -f k8s/backend-ai.yaml
+kubectl apply -f k8s/backend-api.yaml
+kubectl apply -f k8s/frontend.yaml
 ```
 
 ## Verify
