@@ -1,3 +1,5 @@
+[![CI](https://github.com/manikumarpokala/nivoxai/actions/workflows/ci.yml/badge.svg)](https://github.com/manikumarpokala/nivoxai/actions/workflows/ci.yml)
+
 AI-Powered Brand–Influencer Matching & Campaign Intelligence Platform
 
 Author: Manikumar Pokala
@@ -245,31 +247,31 @@ Strong alignment with Influmatch & Amity AI Labs
 
 ## Offline Evaluation (Ranking Metrics)
 
-To validate ranking quality, NivoxAI includes an offline evaluation harness with standard information-retrieval metrics:
+NivoxAI includes an offline evaluation harness to validate influencer ranking quality using standard IR metrics:
 
-NDCG@K (ranking quality with graded relevance)
+NDCG@K (graded relevance ranking quality)
 
-Precision@K / Recall@K (binary relevance, where “relevant” = relevance ≥ 2)
+Precision@K / Recall@K (binary relevance where relevant = relevance ≥ 2)
 
-Run:
+Run locally:
 
 cd backend-ai
 python -m eval.run_eval
 
 
-Or inside Docker:
+Run in Docker:
 
 docker exec -it nivoxai-backend-ai python -m eval.run_eval
 
 
-Sample results (8 campaigns):
+Aggregate results (8 campaign scenarios):
 
-Metric	Model (weighted ranker)	Followers baseline	Engagement baseline
-NDCG@5	0.93	0.62	0.68
-Precision@5	0.78	0.52	0.55
-Recall@5	0.81	0.59	0.63
-NDCG@10	0.95	0.74	0.78
-Precision@10	0.56	0.45	0.48
-Recall@10	0.92	0.76	0.80
+Metric	Model (weighted ranker)	Baseline (followers)	Baseline (engagement)
+NDCG@5	0.95	0.36	0.81
+Precision@5	0.75	0.25	0.70
+Recall@5	0.95	0.31	0.90
+NDCG@10	0.97	0.66	0.86
+Precision@10	0.49	0.49	0.49
+Recall@10	1.00	1.00	1.00
 
-Interpretation: The model improves top-K quality vs follower and engagement baselines, especially at K=5 where shortlists matter most.
+Interpretation: Engagement is a strong single-signal baseline, but it can fail when the campaign has hard constraints (e.g., region/category/age fit). The weighted ranker improves shortlist quality at K=5 while maintaining strong overall retrieval at K=10—aligned with real influencer shortlisting workflows.

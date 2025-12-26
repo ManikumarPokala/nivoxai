@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+  namespace: nivoxai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-api
+  template:
+    metadata:
+      labels:
+        app: backend-api
+    spec:
+      containers:
+        - name: backend-api
+          image: nivoxai-backend-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4000
+          env:
+            - name: PORT
+              value: "4000"
+            - name: AI_SERVICE_URL
+              value: "http://backend-ai:8000"
+            - name: PGHOST
+              value: "postgres"
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: "nivoxai"
+            - name: PGUSER
+              value: "postgres"
+            - name: PGPASSWORD
+              value: "postgres"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-api
+  namespace: nivoxai
+spec:
+  selector:
+    app: backend-api
+  ports:
+    - port: 4000
+      targetPort: 4000

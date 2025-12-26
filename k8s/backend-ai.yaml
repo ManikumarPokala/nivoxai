@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-ai
+  namespace: nivoxai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-ai
+  template:
+    metadata:
+      labels:
+        app: backend-ai
+    spec:
+      containers:
+        - name: backend-ai
+          image: nivoxai-backend-ai:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: OPENAI_API_KEY
+              value: ""
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-ai
+  namespace: nivoxai
+spec:
+  selector:
+    app: backend-ai
+  ports:
+    - port: 8000
+      targetPort: 8000

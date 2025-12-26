@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  backend-ai-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          python -m pip install fastapi uvicorn scikit-learn numpy pandas pydantic
+
+      - name: Run offline eval
+        run: |
+          cd backend-ai
+          PYTHONPATH=. python -m eval.run_eval
+
+      - name: Import check
+        run: |
+          PYTHONPATH=backend-ai python -c "import app.main"
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build backend-ai
+        run: docker build -t nivoxai-backend-ai:ci ./backend-ai
+
+      - name: Build backend-api
+        run: docker build -t nivoxai-backend-api:ci ./backend-api
+
+      - name: Build frontend
+        run: docker build -t nivoxai-frontend:ci ./frontend
+
+      - name: Eval in backend-ai container
+        run: docker run --rm nivoxai-backend-ai:ci python -m eval.run_eval
