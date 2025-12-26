@@ -12,6 +12,7 @@ data:
   PGUSER: "postgres"
   DATABASE_URL: "postgresql://postgres:<RDS_PASSWORD>@<RDS_ENDPOINT>:5432/nivoxai"
   PORT: "4000"
+  AI_BASE_URL: "http://backend-ai:8000"
   AI_SERVICE_URL: "http://backend-ai:8000"
   NEXT_PUBLIC_API_BASE_URL: "http://backend-api:4000"
   NEXT_PUBLIC_ANALYTICS_URL: "http://backend-ai:8000"

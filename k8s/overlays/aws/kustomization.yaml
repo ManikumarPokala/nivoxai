@@ -11,18 +11,13 @@ resources:
   - ./secret.template.yaml
   - ./ingress.yaml
 
-patchesStrategicMerge:
-  - ./patch-backend-ai.yaml
-  - ./patch-backend-api.yaml
-  - ./patch-frontend.yaml
-
 images:
   - name: nivoxai-backend-ai
-    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/nivoxai-backend-ai
+    newName: <ECR_REGISTRY>/nivoxai-backend-ai
     newTag: latest
   - name: nivoxai-backend-api
-    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/nivoxai-backend-api
+    newName: <ECR_REGISTRY>/nivoxai-backend-api
     newTag: latest
   - name: nivoxai-frontend
-    newName: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/nivoxai-frontend
+    newName: <ECR_REGISTRY>/nivoxai-frontend
     newTag: latest
