@@ -14,7 +14,7 @@ from app.models.schemas import (
     RecommendationRequest,
     RecommendationResponse,
 )
-from app.agents.runner import get_agent_status, run_strategy_agent
+from app.agents import runner
 from app.services.rag import search_influencers
 from app.services.recommender import compute_recommendations
 
@@ -103,7 +103,7 @@ def model_status():
 @app.get("/agent/status", tags=["Agent"])
 def agent_status():
     default_model = os.environ.get("OPENAI_MODEL")
-    return get_agent_status(default_model)
+    return runner.get_agent_status(default_model)
 
 
 # --------- RECOMMENDATION ENDPOINTS ---------
@@ -274,12 +274,13 @@ def chat_strategy(req: ChatRequest) -> ChatResponse:
         }
         for r in req.recommendations.recommendations
     ]
-    result = run_strategy_agent(
+    result = runner.run_strategy_agent(
         campaign=req.campaign.dict(),
         recommendations=recs,
         user_question=req.question,
     )
-    total_ms = int((time.perf_counter() - start_time) * 1000)
+    ms = (time.perf_counter() - start_time) * 1000
+    total_ms = max(1, int(round(ms)))
     print(
         json.dumps(
             {

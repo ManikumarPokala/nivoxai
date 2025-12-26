@@ -8,18 +8,12 @@ from typing import Dict, List, Tuple
 from app.agents import planner, reviewer, tools
 from app.services.chat_strategy import generate_strategy_reply
 
-_LAST_RUN_AT: str | None = None
-_LAST_ERROR: str | None = None
+LAST_RUN_AT: str | None = None
+LAST_ERROR: str | None = None
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-def _record_run(error: str | None) -> None:
-    global _LAST_RUN_AT, _LAST_ERROR
-    _LAST_RUN_AT = _now_iso()
-    _LAST_ERROR = error
 
 
 def _summarize_plan(plan: dict) -> str:
@@ -71,6 +65,8 @@ def run_strategy_agent(
     trace: List[Dict[str, object]] = []
     fallback_used = False
     model_used: str | None = None
+    global LAST_RUN_AT, LAST_ERROR
+    LAST_RUN_AT = _now_iso()
 
     try:
         # Plan step
@@ -79,11 +75,12 @@ def run_strategy_agent(
         rec_summary = tools.summarize_recommendations(recommendations)
         plan = planner.build_plan(constraints, rec_summary, user_question)
         t1 = time.perf_counter()
+        ms = (t1 - t0) * 1000
         trace.append(
             {
                 "name": "plan",
                 "summary": _summarize_plan(plan),
-                "latency_ms": int((t1 - t0) * 1000),
+                "latency_ms": max(1, int(round(ms))),
             }
         )
 
@@ -101,11 +98,12 @@ def run_strategy_agent(
             draft = _build_deterministic_reply(plan, rec_summary)
             fallback_used = True
         t1 = time.perf_counter()
+        ms = (t1 - t0) * 1000
         trace.append(
             {
                 "name": "draft",
                 "summary": "Generated strategy draft.",
-                "latency_ms": int((t1 - t0) * 1000),
+                "latency_ms": max(1, int(round(ms))),
             }
         )
 
@@ -120,15 +118,16 @@ def run_strategy_agent(
             draft = _build_deterministic_reply(plan, rec_summary)
             fallback_used = True
         t1 = time.perf_counter()
+        ms = (t1 - t0) * 1000
         trace.append(
             {
                 "name": "review",
                 "summary": "Validated draft against campaign constraints.",
-                "latency_ms": int((t1 - t0) * 1000),
+                "latency_ms": max(1, int(round(ms))),
             }
         )
 
-        _record_run(None)
+        LAST_ERROR = None
         return {
             "reply": draft,
             "trace": trace,
@@ -136,7 +135,7 @@ def run_strategy_agent(
             "fallback_used": fallback_used,
         }
     except Exception as exc:
-        _record_run(str(exc))
+        LAST_ERROR = str(exc)
         fallback_used = True
         fallback_summary = tools.summarize_recommendations(recommendations)
         fallback_plan = planner.build_plan(
@@ -162,6 +161,6 @@ def get_agent_status(default_model: str | None) -> Dict[str, object]:
     return {
         "agent_version": "v1",
         "default_model": default_model,
-        "last_run_at": _LAST_RUN_AT,
-        "last_error": _LAST_ERROR,
+        "last_run_at": LAST_RUN_AT,
+        "last_error": LAST_ERROR,
     }
