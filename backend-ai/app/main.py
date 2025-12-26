@@ -1,7 +1,12 @@
-from typing import Literal
+import json
+import os
+import time
+from typing import Literal, List
+
+from uuid import uuid4
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.schemas import (
     Campaign,
@@ -9,8 +14,8 @@ from app.models.schemas import (
     RecommendationRequest,
     RecommendationResponse,
 )
-from app.services.chat_strategy import generate_strategy_reply
-from app.services.rag import InfluencerDoc, search_influencers
+from app.agents.runner import get_agent_status, run_strategy_agent
+from app.services.rag import search_influencers
 from app.services.recommender import compute_recommendations
 
 app = FastAPI(
@@ -60,9 +65,18 @@ class ChatRequest(BaseModel):
     question: str | None = None
 
 
+class AgentStep(BaseModel):
+    name: str
+    summary: str
+    latency_ms: int | None = None
+
+
 class ChatResponse(BaseModel):
     """LLM / agent reply as plain text."""
     reply: str
+    trace: List[AgentStep] = Field(default_factory=list)
+    model: str | None = None
+    fallback_used: bool = False
 
 
 # --------- HEALTH ---------
@@ -85,6 +99,11 @@ def model_status():
         "drift_detected": False,
         "retrain_required": False,
     }
+
+@app.get("/agent/status", tags=["Agent"])
+def agent_status():
+    default_model = os.environ.get("OPENAI_MODEL")
+    return get_agent_status(default_model)
 
 
 # --------- RECOMMENDATION ENDPOINTS ---------
@@ -245,19 +264,39 @@ def chat_strategy(req: ChatRequest) -> ChatResponse:
     - Produces a structured, actionable KOL campaign strategy.
     """
 
-    reply = generate_strategy_reply(
+    request_id = uuid4().hex
+    start_time = time.perf_counter()
+    recs = [
+        {
+            "influencer_id": r.influencer_id,
+            "score": r.score,
+            "reasons": r.reasons,
+        }
+        for r in req.recommendations.recommendations
+    ]
+    result = run_strategy_agent(
         campaign=req.campaign.dict(),
-        recommendations=[
-            {
-                "influencer_id": r.influencer_id,
-                "score": r.score,
-                "reasons": r.reasons,
-            }
-            for r in req.recommendations.recommendations
-        ],
+        recommendations=recs,
         user_question=req.question,
     )
-    return ChatResponse(reply=reply)
+    total_ms = int((time.perf_counter() - start_time) * 1000)
+    print(
+        json.dumps(
+            {
+                "request_id": request_id,
+                "endpoint": "/chat-strategy",
+                "total_ms": total_ms,
+                "fallback_used": result.get("fallback_used", False),
+                "trace": result.get("trace", []),
+            }
+        )
+    )
+    return ChatResponse(
+        reply=result["reply"],
+        trace=[AgentStep(**step) for step in result.get("trace", [])],
+        model=result.get("model"),
+        fallback_used=result.get("fallback_used", False),
+    )
 
 
 if __name__ == "__main__":
