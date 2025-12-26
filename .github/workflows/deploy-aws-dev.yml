@@ -1,0 +1,76 @@
+name: Deploy to AWS EKS (dev)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push images
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          IMAGE_TAG=sha-${SHORT_SHA}
+          docker build -t ${ECR_REGISTRY}/nivoxai-backend-ai:${IMAGE_TAG} -t ${ECR_REGISTRY}/nivoxai-backend-ai:latest ./backend-ai
+          docker build -t ${ECR_REGISTRY}/nivoxai-backend-api:${IMAGE_TAG} -t ${ECR_REGISTRY}/nivoxai-backend-api:latest ./backend-api
+          docker build -t ${ECR_REGISTRY}/nivoxai-frontend:${IMAGE_TAG} -t ${ECR_REGISTRY}/nivoxai-frontend:latest ./frontend
+          docker push ${ECR_REGISTRY}/nivoxai-backend-ai:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/nivoxai-backend-ai:latest
+          docker push ${ECR_REGISTRY}/nivoxai-backend-api:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/nivoxai-backend-api:latest
+          docker push ${ECR_REGISTRY}/nivoxai-frontend:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/nivoxai-frontend:latest
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.29.0"
+
+      - name: Configure kubeconfig
+        run: aws eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_REGION}"
+
+      - name: Apply manifests
+        run: |
+          kubectl apply -f k8s/overlays/aws-dev/namespace.yaml
+          kubectl apply -f k8s/overlays/aws-dev/configmap.yaml
+          kubectl apply -f k8s/overlays/aws-dev/secret.template.yaml
+          kubectl apply -k k8s/overlays/aws-dev
+
+      - name: Rollout updated images
+        run: |
+          kubectl -n nivoxai-dev set image deploy/backend-ai backend-ai=${ECR_REGISTRY}/nivoxai-backend-ai:${IMAGE_TAG}
+          kubectl -n nivoxai-dev set image deploy/backend-api backend-api=${ECR_REGISTRY}/nivoxai-backend-api:${IMAGE_TAG}
+          kubectl -n nivoxai-dev set image deploy/frontend frontend=${ECR_REGISTRY}/nivoxai-frontend:${IMAGE_TAG}
+          kubectl -n nivoxai-dev rollout status deploy/backend-ai --timeout=180s
+          kubectl -n nivoxai-dev rollout status deploy/backend-api --timeout=180s
+          kubectl -n nivoxai-dev rollout status deploy/frontend --timeout=180s
+
+      - name: Deployment summary
+        run: |
+          kubectl -n nivoxai-dev get pods
+          kubectl -n nivoxai-dev get svc
