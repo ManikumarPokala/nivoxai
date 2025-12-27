@@ -63,9 +63,12 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend-ai
+          dockerfile: ./backend-ai/Dockerfile
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:latest
@@ -74,7 +77,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend-api
+          dockerfile: ./backend-api/Dockerfile
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:latest
@@ -83,9 +89,12 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
+          dockerfile: ./frontend/Dockerfile
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:latest

@@ -76,6 +76,11 @@ EC2 docker-compose image names (GHCR):
 - ghcr.io/<owner>/nivoxai-backend-api:latest
 - ghcr.io/<owner>/nivoxai-backend-ai:latest
 
+Replace `<owner>` with `manikumarpokala` for this repo:
+- ghcr.io/manikumarpokala/nivoxai-frontend:latest
+- ghcr.io/manikumarpokala/nivoxai-backend-api:latest
+- ghcr.io/manikumarpokala/nivoxai-backend-ai:latest
+
 ## Versioning
 
 - `backend-ai` `/healthz` includes `git_sha`.
