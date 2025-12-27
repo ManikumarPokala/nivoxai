@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -45,15 +49,8 @@ jobs:
   build-push:
     needs: build-test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set image owner
-        run: echo "IMAGE_OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -70,8 +67,8 @@ jobs:
           build-args: |
             GIT_SHA=${{ github.sha }}
           tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/nivoxai-backend-ai:${{ github.sha }}
-            ghcr.io/${{ env.IMAGE_OWNER }}/nivoxai-backend-ai:latest
+            ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:latest
 
       - name: Build and push backend-api (GHCR)
         uses: docker/build-push-action@v6
@@ -79,8 +76,8 @@ jobs:
           context: ./backend-api
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/nivoxai-backend-api:${{ github.sha }}
-            ghcr.io/${{ env.IMAGE_OWNER }}/nivoxai-backend-api:latest
+            ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:latest
 
       - name: Build and push frontend (GHCR)
         uses: docker/build-push-action@v6
@@ -90,8 +87,17 @@ jobs:
           build-args: |
             GIT_SHA=${{ github.sha }}
           tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/nivoxai-frontend:${{ github.sha }}
-            ghcr.io/${{ env.IMAGE_OWNER }}/nivoxai-frontend:latest
+            ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:latest
+
+      - name: Print pushed images
+        run: |
+          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:${{ github.sha }}"
+          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:latest"
+          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:${{ github.sha }}"
+          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:latest"
+          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:${{ github.sha }}"
+          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:latest"
 
       - name: Configure AWS credentials (optional)
         if: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_REGION != '' && (secrets.AWS_ROLE_TO_ASSUME != '' || (secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '')) }}

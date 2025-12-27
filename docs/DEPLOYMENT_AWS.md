@@ -71,6 +71,11 @@ docker pull ghcr.io/<owner>/nivoxai-backend-ai:latest
 - EKS: update Deployment image tag and apply.
 - EC2: update docker-compose image tags and restart.
 
+EC2 docker-compose image names (GHCR):
+- ghcr.io/<owner>/nivoxai-frontend:latest
+- ghcr.io/<owner>/nivoxai-backend-api:latest
+- ghcr.io/<owner>/nivoxai-backend-ai:latest
+
 ## Versioning
 
 - `backend-ai` `/healthz` includes `git_sha`.
