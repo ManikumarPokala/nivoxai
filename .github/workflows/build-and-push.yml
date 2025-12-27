@@ -107,28 +107,3 @@ jobs:
           echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:latest"
           echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:${{ github.sha }}"
           echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:latest"
-
-      - name: Configure AWS credentials (optional)
-        if: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_REGION != '' && (secrets.AWS_ROLE_TO_ASSUME != '' || (secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '')) }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      - name: Login to ECR (optional)
-        if: ${{ secrets.ECR_REGISTRY != '' && secrets.AWS_REGION != '' }}
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push backend-ai (ECR optional)
-        if: ${{ secrets.ECR_REGISTRY != '' }}
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend-ai
-          push: true
-          build-args: |
-            GIT_SHA=${{ github.sha }}
-          tags: |
-            ${{ secrets.ECR_REGISTRY }}/nivoxai-backend-ai:${{ github.sha }}
-            ${{ secrets.ECR_REGISTRY }}/nivoxai-backend-ai:latest
