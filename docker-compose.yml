@@ -19,11 +19,20 @@ services:
       retries: 20
 
   backend-ai:
-    build: ./backend-ai
+    build:
+      context: ./backend-ai
+      args:
+        GIT_SHA: local-dev
     container_name: nivoxai-backend-ai
     restart: always
     environment:
       CORS_ORIGINS: http://localhost:3000
+      MODEL_NAME: nivoxai-heuristic
+      MODEL_VERSION: 0.1.0
+      RAG_DEFAULT_MODE: hybrid
+      RAG_VECTOR_WEIGHT: 0.6
+      RAG_KEYWORD_WEIGHT: 0.4
+      INGESTION_ENABLED: "true"
     ports:
       - "8000:8000"
     healthcheck:
@@ -47,8 +56,15 @@ services:
         condition: service_healthy
     environment:
       PORT: 4000
+      AI_SERVICE_BASE_URL: http://backend-ai:8000
       AI_SERVICE_URL: http://backend-ai:8000
       CORS_ORIGINS: http://localhost:3000
+      JWT_SECRET: dev-jwt-secret
+      DEMO_TENANT_ID: 00000000-0000-0000-0000-000000000001
+      DEMO_USER_ID: 00000000-0000-0000-0000-000000000002
+      DEMO_USER_EMAIL: admin@nivoxai.local
+      DEMO_USER_NAME: Demo Admin
+      DEMO_USER_ROLE: admin
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: nivoxai
@@ -73,9 +89,11 @@ services:
         NEXT_PUBLIC_API_BASE_URL: /api
         NEXT_PUBLIC_AI_BASE_URL: /ai
         NEXT_PUBLIC_ANALYTICS_URL: /ai
+        GIT_SHA: local-dev
     environment:
       BACKEND_API_BASE_URL: http://backend-api:4000
       BACKEND_AI_BASE_URL: http://backend-ai:8000
+      DEMO_AUTH_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJ0ZW5hbnRfaWQiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJyb2xlIjoiYWRtaW4ifQ.0VLHt8xDagLPiJQzdlQaOpOj-KXE6KI9nxDjNlXd3FE
     container_name: nivoxai-frontend
     restart: always
     depends_on:

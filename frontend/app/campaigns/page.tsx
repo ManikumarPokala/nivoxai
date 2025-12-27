@@ -12,6 +12,7 @@ import {
   getCampaigns,
   type CampaignInput,
 } from "@/lib/api";
+import { logAnalyticsEvent } from "@/lib/analytics";
 import { useI18n } from "@/lib/i18n";
 
 const statusMap: Record<string, "success" | "warning" | "info"> = {
@@ -76,6 +77,14 @@ export default function CampaignsPage() {
       if (created.id) {
         setCampaigns((prev) => [created, ...prev]);
         setStatusById((prev) => ({ ...prev, [created.id]: "Draft" }));
+        void logAnalyticsEvent({
+          event_type: "campaign_created",
+          campaign_id: created.id,
+          metadata: {
+            goal: created.goal,
+            region: created.target_region,
+          },
+        });
       }
       setIsModalOpen(false);
       return;

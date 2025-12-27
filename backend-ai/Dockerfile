@@ -4,6 +4,8 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ARG GIT_SHA=dev
+ENV GIT_SHA=$GIT_SHA
 
 RUN pip install --no-cache-dir fastapi uvicorn scikit-learn numpy pandas pydantic
 

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel
@@ -14,6 +15,9 @@ class Influencer(BaseModel):
     languages: List[str]
     audience_age_range: str
     bio: str
+    source: str | None = None
+    last_crawled_at: datetime | None = None
+    stats_updated_at: datetime | None = None
 
 
 class Campaign(BaseModel):

@@ -14,6 +14,7 @@ export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const { locale, setLocale, t } = useI18n();
+  const gitSha = process.env.NEXT_PUBLIC_GIT_SHA ?? "dev";
 
   const navItems = [
     { label: t("nav_dashboard"), href: "/dashboard" },
@@ -154,6 +155,9 @@ export default function AppShell({ children }: AppShellProps) {
           <main className="page-enter px-4 py-6 lg:px-10 lg:py-10">
             {children}
           </main>
+          <footer className="border-t border-slate-200/70 bg-white/80 px-4 py-3 text-xs text-slate-500 lg:px-10">
+            Build {gitSha}
+          </footer>
         </div>
       </div>
 

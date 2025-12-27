@@ -9,7 +9,12 @@ type RouteContext = {
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
   try {
-    const response = await fetch(`${BACKEND_API_BASE_URL}/campaigns/${id}`, {
+    const headers: HeadersInit = {};
+    if (process.env.DEMO_AUTH_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.DEMO_AUTH_TOKEN}`;
+    }
+    const response = await fetch(`${BACKEND_API_BASE_URL}/v1/campaigns/${id}`, {
+      headers,
       cache: "no-store",
     });
     if (response.ok) {

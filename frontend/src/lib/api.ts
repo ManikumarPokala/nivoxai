@@ -47,11 +47,14 @@ export type AgentStatus = {
 };
 
 export type ModelStatus = {
-  model_version: string;
-  last_trained: string;
-  data_freshness_days: number;
-  drift_detected: boolean;
-  retrain_required: boolean;
+  status: "online" | "degraded" | "offline";
+  model_name: string;
+  provider: string;
+  version: string;
+  last_reload_at: string | null;
+  last_embedding_refresh_at: string | null;
+  uptime_s: number;
+  time: string;
 };
 
 export type RagResult = {
@@ -91,11 +94,20 @@ async function fetchJson<T>(
       signal: controller.signal,
       cache: "no-store",
     });
+    const requestId = response.headers.get("x-request-id");
 
     if (!response.ok) {
+      console.error("API request failed", {
+        url,
+        requestId: requestId ?? undefined,
+        status: response.status,
+        payload: options?.body,
+      });
       return {
         data: null,
-        error: `Request failed (${response.status} ${response.statusText})`,
+        error: `Request failed (${response.status} ${response.statusText})${
+          requestId ? ` • Request ID: ${requestId}` : ""
+        }`,
       };
     }
 
@@ -110,7 +122,7 @@ async function fetchJson<T>(
 }
 
 export async function getHealthAI(): Promise<ApiResult<{ status: string }>> {
-  return fetchJson<{ status: string }>(`/api/ai/health`);
+  return fetchJson<{ status: string }>(`/api/healthz`);
 }
 
 export async function getHealthAPI(): Promise<ApiResult<{ status: string }>> {
@@ -118,7 +130,7 @@ export async function getHealthAPI(): Promise<ApiResult<{ status: string }>> {
 }
 
 export async function getModelStatus(): Promise<ApiResult<ModelStatus>> {
-  return fetchJson<ModelStatus>(`/api/ai/model-status`);
+  return fetchJson<ModelStatus>(`/api/model/status`);
 }
 
 export async function getAgentStatus(): Promise<ApiResult<AgentStatus>> {

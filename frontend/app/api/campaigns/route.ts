@@ -4,7 +4,12 @@ import { createCampaign, listCampaigns } from "./store";
 
 export async function GET() {
   try {
-    const response = await fetch(`${BACKEND_API_BASE_URL}/campaigns`, {
+    const headers: HeadersInit = {};
+    if (process.env.DEMO_AUTH_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.DEMO_AUTH_TOKEN}`;
+    }
+    const response = await fetch(`${BACKEND_API_BASE_URL}/v1/campaigns`, {
+      headers,
       cache: "no-store",
     });
     if (response.ok) {
@@ -22,9 +27,13 @@ export async function POST(request: NextRequest) {
   let body: unknown = null;
   try {
     body = await request.json();
-    const response = await fetch(`${BACKEND_API_BASE_URL}/campaigns`, {
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (process.env.DEMO_AUTH_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.DEMO_AUTH_TOKEN}`;
+    }
+    const response = await fetch(`${BACKEND_API_BASE_URL}/v1/campaigns`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
 

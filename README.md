@@ -80,9 +80,7 @@ Learning-to-Rank models
 
 3.2 RAG Influencer Discovery Pipeline
 
-Semantic influencer search
-
-Vector similarity + metadata filtering
+Hybrid influencer search (vector + keyword)
 
 Designed for:
 
@@ -90,13 +88,11 @@ Multi-tenant brand data
 
 Governance and visibility filtering
 
-Roadmap-ready for:
+Supports:
 
-Hybrid search (BM25 + vector)
-
-Re-ranking (cross-encoder / LLM reranker)
-
-Freshness-aware retrieval
+- Vector similarity + keyword (BM25-ish) scoring with weighted fusion
+- Optional LLM reranking on top candidates (falls back if unavailable)
+- Configurable search mode, candidate pool size, and weights
 
 3.3 Agentic LLM Strategy System
 
@@ -178,6 +174,8 @@ Docker, Docker Compose
 
 PostgreSQL 16
 
+Deployment guide: docs/DEPLOYMENT_AWS.md
+
 6. Local Setup & Execution
 
 macOS (Docker Desktop, no sudo)
@@ -210,12 +208,57 @@ API: http://localhost:4000/health
 
 AI: http://localhost:8000/health
 
+AI Healthz: http://localhost:8000/healthz
+
+AI Model Status: http://localhost:8000/v1/model/status
+
+Smoke check:
+cd backend-ai
+./scripts/healthz-smoke.sh
+
+Metrics:
+curl http://localhost:8000/metrics
+
+Seed analytics demo data:
+cd backend-api
+npm run seed:analytics
+
 7. Key Endpoints
 Capability	Endpoint
 Recommendation	POST /recommend
 RAG Search	POST /rag/influencers
 Strategy Agent	POST /chat-strategy
 Health	/health
+Analytics summary	GET /v1/analytics/summary?window=24h|7d|30d
+Analytics campaign	GET /v1/analytics/campaign/:id
+Analytics event	POST /v1/analytics/event
+
+RAG Search parameters
+
+- mode: vector | keyword | hybrid (default: hybrid)
+- rerank: true | false (default: false)
+- top_k: final results count
+- candidate_k: candidate pool size before rerank
+
+RAG tuning (env vars)
+
+- RAG_DEFAULT_MODE (default: hybrid)
+- RAG_VECTOR_WEIGHT (default: 0.6)
+- RAG_KEYWORD_WEIGHT (default: 0.4)
+- RAG_RERANK_MODE (default: none or llm)
+- RAG_RERANK_MODEL (default: gpt-4o-mini)
+- RAG_RERANK_TIMEOUT_S (default: 8)
+
+Freshness-aware ranking
+
+- Influencer profiles include source, last_crawled_at, stats_updated_at.
+- Ranking applies a decay multiplier when stats are stale.
+- Ingestion updates stats daily and refreshes embeddings (in-memory by default).
+
+Ingestion controls (env vars)
+
+- INGESTION_ENABLED (default: true)
+- INGESTION_CSV_PATH (optional, CSV file to load influencer profiles)
 
 Agent Trace
 The /chat-strategy response includes agent metadata for plan → draft → review:
@@ -258,6 +301,53 @@ Troubleshooting
   - Linux: start the docker service (`sudo systemctl start docker`)
 - sudo password prompt on macOS
   - It uses your macOS login password, but Docker Desktop should not require sudo for Docker commands
+
+Environment (optional)
+
+- AI_SERVICE_BASE_URL (backend-api → backend-ai base URL)
+- MODEL_NAME (backend-ai model name for /v1/model/status)
+- MODEL_VERSION (backend-ai model version for /v1/model/status)
+- JWT_SECRET (backend-api JWT signing secret)
+- DEMO_AUTH_TOKEN (frontend → backend-api Authorization token)
+- DEMO_TENANT_ID / DEMO_USER_ID (seeded tenant/user IDs)
+
+Multi-tenant demo
+
+- Default tenant/user are seeded on backend-api startup.
+- Frontend proxies attach DEMO_AUTH_TOKEN for tenant-scoped access.
+- RBAC roles: admin, analyst, viewer (writes require admin/analyst).
+
+Evaluation
+
+Run evaluation locally:
+
+cd backend-ai
+python -m app.eval.retrieval_eval --dataset ../docs/eval/datasets/sample.jsonl --k 5,10
+python -m app.eval.ranking_eval --dataset ../docs/eval/datasets/sample.jsonl --k 5,10
+
+Latest metrics (sample dataset):
+
+Retrieval (hybrid)
+| Metric | Value |
+| --- | --- |
+| mrr | 0.75 |
+| precision@5 | 0.5 |
+| recall@5 | 0.8333 |
+| ndcg@5 | 0.7812 |
+| precision@10 | 0.3 |
+| recall@10 | 1.0 |
+| ndcg@10 | 0.8421 |
+
+Ranking (recommendations)
+| Metric | Value |
+| --- | --- |
+| mrr | 0.7083 |
+| precision@5 | 0.4667 |
+| recall@5 | 0.7778 |
+| ndcg@5 | 0.7425 |
+| precision@10 | 0.3 |
+| recall@10 | 1.0 |
+| ndcg@10 | 0.8214 |
 
 Kubernetes manifests
 

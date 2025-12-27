@@ -20,6 +20,7 @@ import {
   type ModelStatus,
   type RecommendationResponse,
 } from "@/lib/api";
+import { logAnalyticsEvent } from "@/lib/analytics";
 import { demoInfluencers } from "@/lib/demo-data";
 import { buildCampaignPayload } from "@/lib/payloads";
 import { useI18n } from "@/lib/i18n";
@@ -94,6 +95,16 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
     }
 
     setRecommendation(response.data);
+    void logAnalyticsEvent({
+      event_type: "influencer_recommended",
+      campaign_id: response.data.campaign_id,
+      metadata: {
+        recommendation_count: response.data.recommendations.length,
+        top_influencers: response.data.recommendations
+          .slice(0, 5)
+          .map((item) => item.influencer_id),
+      },
+    });
     setIsLoadingRecs(false);
   }
 
@@ -127,10 +138,31 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
     }
 
     setStrategy(response.data);
+    void logAnalyticsEvent({
+      event_type: "strategy_generated",
+      campaign_id: campaign.id,
+      metadata: {
+        goal: campaign.goal,
+        question: null,
+      },
+    });
     const status = await getAgentStatus();
     setAgentStatus(status.data);
     setIsLoadingStrategy(false);
   }
+
+  useEffect(() => {
+    if (!campaign || !recommendation) {
+      return;
+    }
+    recommendation.recommendations.slice(0, 10).forEach((rec) => {
+      void logAnalyticsEvent({
+        event_type: "influencer_viewed",
+        campaign_id: campaign.id,
+        influencer_id: rec.influencer_id,
+      });
+    });
+  }, [campaign, recommendation]);
 
   if (!campaign) {
     return (
@@ -426,8 +458,12 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
               </pre>
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-600">
                 <p className="font-semibold text-slate-700">Model status</p>
-                <p>{modelStatus?.model_version ?? "Connect /model/status"}</p>
-                <p>Drift detected: {modelStatus?.drift_detected ? "Yes" : "No"}</p>
+                <p>
+                  {modelStatus
+                    ? `${modelStatus.model_name} • ${modelStatus.version}`
+                    : "Connect /v1/model/status"}
+                </p>
+                <p>Status: {modelStatus?.status ?? "unknown"}</p>
               </div>
             </CardBody>
           </Card>

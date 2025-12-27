@@ -10,7 +10,12 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
     const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    const nextResponse = NextResponse.json(data, { status: response.status });
+    const requestId = response.headers.get("x-request-id");
+    if (requestId) {
+      nextResponse.headers.set("X-Request-Id", requestId);
+    }
+    return nextResponse;
   } catch (error) {
     return NextResponse.json(
       { error: "Strategy proxy failed." },

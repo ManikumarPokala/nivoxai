@@ -1,0 +1,38 @@
+name: eval
+
+on:
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install eval deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn scikit-learn numpy pandas pydantic
+
+      - name: Run retrieval eval
+        env:
+          PYTHONPATH: backend-ai
+        run: |
+          python -m app.eval.retrieval_eval --dataset docs/eval/datasets/sample.jsonl --k 5,10
+
+      - name: Run ranking eval
+        env:
+          PYTHONPATH: backend-ai
+        run: |
+          python -m app.eval.ranking_eval --dataset docs/eval/datasets/sample.jsonl --k 5,10
+
+      - name: Upload eval reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-reports
+          path: docs/eval/runs

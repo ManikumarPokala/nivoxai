@@ -32,11 +32,23 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
+  const [modelStatusError, setModelStatusError] = useState<string | null>(null);
+  const [lastChecked, setLastChecked] = useState<string | null>(null);
   const [aiHealth, setAiHealth] = useState<boolean | null>(null);
   const [apiHealth, setApiHealth] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
+    const updateModelStatus = async () => {
+      const result = await getModelStatus();
+      if (!active) {
+        return;
+      }
+      setModelStatus(result.data);
+      setModelStatusError(result.error);
+      setLastChecked(new Date().toLocaleTimeString());
+    };
+
     getAnalyticsSummary().then((result) => {
       if (!active) {
         return;
@@ -44,12 +56,8 @@ export default function DashboardPage() {
       setAnalytics(result.data);
       setAnalyticsError(result.error);
     });
-    getModelStatus().then((result) => {
-      if (!active) {
-        return;
-      }
-      setModelStatus(result.data);
-    });
+    void updateModelStatus();
+    const interval = setInterval(updateModelStatus, 30_000);
     getHealthAI().then((result) => {
       if (active) {
         setAiHealth(Boolean(result.data));
@@ -62,8 +70,17 @@ export default function DashboardPage() {
     });
     return () => {
       active = false;
+      clearInterval(interval);
     };
   }, []);
+
+  const modelStatusLabel = modelStatus?.status ?? "offline";
+  const modelBadgeVariant =
+    modelStatusLabel === "online"
+      ? "success"
+      : modelStatusLabel === "degraded"
+      ? "warning"
+      : "neutral";
 
   return (
     <div className="space-y-8">
@@ -118,31 +135,49 @@ export default function DashboardPage() {
               Model Status
             </p>
             <h2 className="text-xl font-semibold text-slate-900">
-              {modelStatus ? "Operational" : "Unknown"}
+              {modelStatus
+                ? modelStatus.status === "online"
+                  ? "Online"
+                  : modelStatus.status === "degraded"
+                  ? "Degraded"
+                  : "Offline"
+                : "Unknown"}
             </h2>
           </CardHeader>
-          <CardBody className="flex items-center gap-2 text-sm text-slate-500">
-            <Badge variant={modelStatus ? "success" : "warning"}>
-              {modelStatus?.model_version ?? "Connect AI service"}
-            </Badge>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span className="flex items-center gap-1">
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    aiHealth ? "bg-emerald-500" : "bg-amber-400"
-                  }`}
-                />
-                AI
-              </span>
-              <span className="flex items-center gap-1">
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    apiHealth ? "bg-emerald-500" : "bg-amber-400"
-                  }`}
-                />
-                API
-              </span>
+          <CardBody className="space-y-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2">
+              <Badge variant={modelBadgeVariant}>
+                {modelStatus
+                  ? `${modelStatus.model_name} • ${modelStatus.version}`
+                  : "Connect AI service"}
+              </Badge>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="flex items-center gap-1">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      aiHealth ? "bg-emerald-500" : "bg-amber-400"
+                    }`}
+                  />
+                  AI
+                </span>
+                <span className="flex items-center gap-1">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      apiHealth ? "bg-emerald-500" : "bg-amber-400"
+                    }`}
+                  />
+                  API
+                </span>
+              </div>
             </div>
+            <p className="text-xs text-slate-500">
+              Last checked: {lastChecked ?? "—"}
+            </p>
+            {modelStatusLabel === "offline" || modelStatusError ? (
+              <p className="text-xs font-semibold text-rose-600">
+                AI service unreachable. Check logs.
+              </p>
+            ) : null}
           </CardBody>
         </Card>
       </section>

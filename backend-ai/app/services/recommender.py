@@ -1,3 +1,5 @@
+import math
+from datetime import datetime, timezone
 from typing import List, Tuple
 
 from app.models.schemas import (
@@ -20,6 +22,7 @@ def compute_recommendations(
     top_n: int = 10,
 ) -> RecommendationResponse:
     campaign = request.campaign
+    now = datetime.now(timezone.utc)
     engagement_values = [influencer.engagement_rate for influencer in request.influencers]
     min_rate, max_rate = _normalize_engagement(engagement_values)
 
@@ -38,12 +41,20 @@ def compute_recommendations(
 
         age_match_score = 1.0 if influencer.audience_age_range == campaign.target_age_range else 0.3
 
-        score = (
+        base_score = (
             0.4 * content_score
             + 0.25 * region_score
             + 0.25 * engagement_score
             + 0.10 * age_match_score
         )
+        freshness_multiplier = 1.0
+        if influencer.stats_updated_at:
+            updated_at = influencer.stats_updated_at
+            if updated_at.tzinfo is None:
+                updated_at = updated_at.replace(tzinfo=timezone.utc)
+            freshness_days = max((now - updated_at).days, 0)
+            freshness_multiplier = max(0.6, math.exp(-freshness_days / 30))
+        score = base_score * freshness_multiplier
 
         reasons: List[str] = []
         if category_match:
@@ -56,6 +67,8 @@ def compute_recommendations(
             reasons.append("Solid engagement rate relative to peers")
         if age_match_score == 1.0:
             reasons.append("Audience age aligns with target range")
+        if freshness_multiplier < 0.85:
+            reasons.append("Freshness decay applied due to stale stats")
 
         if not reasons:
             reasons.append("General relevance based on profile fit")

@@ -18,6 +18,7 @@ from app.models.schemas import (
     RecommendationResponse,
 )
 from app.agents import runner
+from app.services import ingestion, observability
 from app.services.rag import search_influencers
 from app.services.recommender import compute_recommendations
 
@@ -28,6 +29,7 @@ app = FastAPI(
 )
 
 logger = logging.getLogger(__name__)
+START_TIME = time.time()
 
 cors_origins_env = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
 cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
@@ -40,6 +42,40 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def request_context_middleware(request, call_next):
+    request_id = request.headers.get("x-request-id") or uuid4().hex
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        latency_ms = max(1, int(round((time.perf_counter() - start) * 1000)))
+        observability.record_request(request.url.path, status_code, latency_ms)
+        log_payload = {
+            "request_id": request_id,
+            "method": request.method,
+            "route": request.url.path,
+            "status_code": status_code,
+            "latency_ms": latency_ms,
+        }
+        logger.info(json.dumps(log_payload))
+        response.headers["X-Request-Id"] = request_id
+        return response
+    except Exception:
+        status_code = 500
+        latency_ms = max(1, int(round((time.perf_counter() - start) * 1000)))
+        observability.record_request(request.url.path, status_code, latency_ms)
+        log_payload = {
+            "request_id": request_id,
+            "method": request.method,
+            "route": request.url.path,
+            "status_code": status_code,
+            "latency_ms": latency_ms,
+        }
+        logger.info(json.dumps(log_payload))
+        raise
+
+
 # --------- RAG MODELS ---------
 
 
@@ -47,6 +83,9 @@ class RagQuery(BaseModel):
     """Incoming query model for influencer RAG search."""
     query: str
     top_k: int = 5
+    mode: Literal["vector", "keyword", "hybrid"] | None = None
+    rerank: bool = False
+    candidate_k: int | None = None
 
 
 class RagInfluencerHit(BaseModel):
@@ -121,6 +160,49 @@ def health_check() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/metrics")
+def metrics() -> dict:
+    return observability.get_metrics()
+
+
+@app.get("/healthz")
+def healthz_check() -> dict:
+    return {
+        "status": "ok",
+        "service": "backend-ai",
+        "time": datetime.now(timezone.utc).isoformat(),
+        "git_sha": os.environ.get("GIT_SHA"),
+    }
+
+
+@app.get("/v1/model/status", tags=["Model"])
+def model_status_v1() -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    model_name = os.environ.get("MODEL_NAME", "nivoxai-heuristic")
+    model_version = os.environ.get("MODEL_VERSION", "0.1.0")
+    provider = os.environ.get("MODEL_PROVIDER", "heuristic")
+    last_reload_at = os.environ.get("MODEL_LAST_RELOAD_AT")
+    last_embedding_refresh_at = os.environ.get("MODEL_LAST_EMBED_REFRESH_AT")
+    status = "online"
+
+    try:
+        if provider != "heuristic" and not os.environ.get("OPENAI_API_KEY"):
+            status = "degraded"
+    except Exception:
+        status = "offline"
+
+    return {
+        "status": status,
+        "model_name": model_name,
+        "provider": provider,
+        "version": model_version,
+        "last_reload_at": last_reload_at,
+        "last_embedding_refresh_at": last_embedding_refresh_at,
+        "uptime_s": int(time.time() - START_TIME),
+        "time": now,
+    }
+
+
 @app.get("/model/status", tags=["Model"])
 def model_status():
     return {
@@ -139,6 +221,15 @@ def agent_status():
         "default_model": default_model,
         "last_run_at": runner.LAST_RUN_AT,
         "last_error": runner.LAST_ERROR,
+    }
+
+
+@app.get("/v1/ingestion/status", tags=["Ingestion"])
+def ingestion_status() -> dict:
+    return {
+        "last_run_at": ingestion.LAST_RUN_AT,
+        "records_updated": ingestion.LAST_RECORDS_UPDATED,
+        "last_error": ingestion.LAST_ERROR,
     }
 
 
@@ -188,6 +279,9 @@ def sample_recommendation() -> RecommendationResponse:
             languages=["Thai", "English"],
             audience_age_range="18-24",
             bio="Beauty creator sharing skincare routines and summer glow tips.",
+            source="sample",
+            last_crawled_at=datetime.now(timezone.utc),
+            stats_updated_at=datetime.now(timezone.utc),
         ),
         Influencer(
             id="inf-002",
@@ -200,6 +294,9 @@ def sample_recommendation() -> RecommendationResponse:
             languages=["English", "Mandarin"],
             audience_age_range="25-34",
             bio="Fitness coach with a focus on wellness and outdoor workouts.",
+            source="sample",
+            last_crawled_at=datetime.now(timezone.utc),
+            stats_updated_at=datetime.now(timezone.utc),
         ),
         Influencer(
             id="inf-003",
@@ -212,6 +309,9 @@ def sample_recommendation() -> RecommendationResponse:
             languages=["Thai"],
             audience_age_range="18-24",
             bio="Fashion hauls and beauty collaborations across Asia.",
+            source="sample",
+            last_crawled_at=datetime.now(timezone.utc),
+            stats_updated_at=datetime.now(timezone.utc),
         ),
         Influencer(
             id="inf-004",
@@ -224,6 +324,9 @@ def sample_recommendation() -> RecommendationResponse:
             languages=["Vietnamese", "English"],
             audience_age_range="18-24",
             bio="Skincare reviews, ingredient deep dives, and glow routines.",
+            source="sample",
+            last_crawled_at=datetime.now(timezone.utc),
+            stats_updated_at=datetime.now(timezone.utc),
         ),
         Influencer(
             id="inf-005",
@@ -236,6 +339,9 @@ def sample_recommendation() -> RecommendationResponse:
             languages=["Italian", "English"],
             audience_age_range="25-34",
             bio="Travel vlogs with a focus on coastal destinations.",
+            source="sample",
+            last_crawled_at=datetime.now(timezone.utc),
+            stats_updated_at=datetime.now(timezone.utc),
         ),
         Influencer(
             id="inf-006",
@@ -248,6 +354,9 @@ def sample_recommendation() -> RecommendationResponse:
             languages=["Thai", "English"],
             audience_age_range="18-24",
             bio="Daily skincare habits and product spotlights for humid weather.",
+            source="sample",
+            last_crawled_at=datetime.now(timezone.utc),
+            stats_updated_at=datetime.now(timezone.utc),
         ),
     ]
 
@@ -268,7 +377,11 @@ def rag_influencers(query: RagQuery) -> list[RagInfluencerHit]:
     """
 
     results: list[tuple[InfluencerDoc, float]] = search_influencers(
-        query.query, query.top_k
+        query.query,
+        top_k=query.top_k,
+        mode=query.mode,
+        rerank=query.rerank,
+        candidate_k=query.candidate_k,
     )
 
     hits: list[RagInfluencerHit] = [
@@ -283,6 +396,13 @@ def rag_influencers(query: RagQuery) -> list[RagInfluencerHit]:
         for doc, score in results
     ]
     return hits
+
+
+@app.on_event("startup")
+def start_ingestion_scheduler() -> None:
+    if os.environ.get("INGESTION_ENABLED", "true").lower() != "true":
+        return
+    ingestion.schedule_daily_ingestion()
 
 
 # --------- STRATEGY / AGENTIC CHAT ---------

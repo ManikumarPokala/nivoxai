@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Tuple
 
 from app.agents import planner, reviewer, tools
+from app.services import observability
 from app.services.chat_strategy import generate_strategy_reply
 
 LAST_RUN_AT: str | None = None
@@ -89,11 +90,16 @@ def run_strategy_agent(
         llm_key = os.environ.get("OPENAI_API_KEY")
         if llm_key:
             model_used = os.environ.get("OPENAI_MODEL")
-            draft = generate_strategy_reply(
-                campaign=campaign,
-                recommendations=recommendations,
-                user_question=user_question,
-            )
+            try:
+                draft = generate_strategy_reply(
+                    campaign=campaign,
+                    recommendations=recommendations,
+                    user_question=user_question,
+                )
+                observability.record_llm_call(True)
+            except Exception:
+                observability.record_llm_call(False)
+                raise
         else:
             draft = _build_deterministic_reply(plan, rec_summary)
             fallback_used = True
