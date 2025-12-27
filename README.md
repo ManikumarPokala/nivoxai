@@ -200,6 +200,11 @@ Optional helper scripts:
 
 If the UI shows “fetch failed”, rebuild with `CORS_ORIGINS=http://localhost:3000` set for backend services.
 
+Backend API build (local):
+cd backend-api
+npm ci
+npm run build
+
 Health Endpoints
 
 Frontend: http://localhost:3000
