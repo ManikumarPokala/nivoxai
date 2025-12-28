@@ -140,6 +140,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEMO_MODE: "true"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nivoxai
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -176,7 +179,7 @@ jobs:
                 sleep "$INTERVAL"
                 continue
               fi
-              if docker exec nivoxai-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
+              if docker compose exec -T postgres pg_isready -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
                 echo "Postgres is ready."
                 return 0
               fi

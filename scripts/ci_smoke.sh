@@ -26,6 +26,7 @@ if [ -f "$REPO_ROOT/.env" ]; then
 fi
 
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
 POSTGRES_DB="${POSTGRES_DB:-nivoxai}"
 
 wait_for_postgres() {
@@ -40,7 +41,7 @@ wait_for_postgres() {
       sleep "$INTERVAL"
       continue
     fi
-    if docker exec nivoxai-postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
+    if docker compose exec -T postgres pg_isready -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
       return 0
     fi
     sleep "$INTERVAL"

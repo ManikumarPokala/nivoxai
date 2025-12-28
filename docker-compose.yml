@@ -4,9 +4,9 @@ services:
     container_name: nivoxai-postgres
     restart: always
     environment:
-      POSTGRES_DB: nivoxai
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-nivoxai}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
@@ -76,9 +76,10 @@ services:
       DEMO_ADMIN_KEY: DEMO_ONLY_READ_ACCESS_2025
       PGHOST: postgres
       PGPORT: 5432
-      PGDATABASE: nivoxai
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-nivoxai}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-nivoxai}}
     ports:
       - "4000:4000"
     healthcheck:
