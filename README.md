@@ -2,6 +2,14 @@
 
 AI-Powered Brand–Influencer Matching & Campaign Intelligence Platform
 
+Deployed Demo (placeholder): https://demo.nivoxai.example
+
+Start here (reviewers)
+1) Open /demo
+2) Then /qa/agent (trace + safety)
+3) Then /qa/rag (hybrid + freshness)
+4) Then /qa/recommend (explainability + A/B)
+
 Author: Manikumar Pokala
 Contact: manikumarp183@gmail.com
 
@@ -27,6 +35,17 @@ Reviewer Quickstart (5 minutes)
 6) Open UI:
    http://localhost:3000
 
+Local Quickstart
+1) docker compose up -d --build
+2) make db-seed
+3) make demo
+4) open http://localhost:3000/demo
+
+Architecture (high level)
+
+Frontend (Next.js) → backend-api (Express) → backend-ai (FastAPI)
+                          ↘ Postgres (events, analytics, campaigns)
+
 UI Auth & Diagnostics
 
 - Paste JWT and tenant_id in Settings → "Auth / Session" (stored as `nivoxai_jwt` and `nivoxai_tenant_id`).
@@ -41,6 +60,8 @@ What to look at
 - RAG pipeline: backend-ai/app/services/rag.py
 - Recommendation scoring: backend-ai/app/services/recommender.py
 - Multi-tenancy design: docs/SECURITY_MULTI_TENANCY.md
+- Safety controls: docs/SAFETY.md
+- Hiring packet: docs/HIRING_PACKET.md
 - CI quality gates: .github/workflows/ci.yml
 - Evaluation scripts: eval/run_ranking_eval.py, eval/run_rag_eval.py, eval/save_results.py
 

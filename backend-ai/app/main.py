@@ -43,6 +43,49 @@ app = FastAPI(
 )
 
 logger = logging.getLogger(__name__)
+
+DEMO_MODE = os.environ.get("DEMO_MODE") == "true"
+DEMO_RATE_LIMIT_MAX = int(os.environ.get("DEMO_RATE_LIMIT_MAX", "30"))
+DEMO_RATE_LIMIT_WINDOW_S = int(os.environ.get("DEMO_RATE_LIMIT_WINDOW_S", "60"))
+DEMO_PAYLOAD_MAX_BYTES = int(os.environ.get("DEMO_PAYLOAD_MAX_BYTES", "20000"))
+_DEMO_LIMITER: dict[str, dict[str, float]] = {}
+
+
+def _enforce_demo_limits(request: Request, action: str) -> JSONResponse | None:
+    if not DEMO_MODE:
+        return None
+    request_id = getattr(request.state, "request_id", None) or uuid4().hex
+    length_header = request.headers.get("content-length")
+    if length_header:
+        try:
+            length = int(length_header)
+        except ValueError:
+            length = 0
+        if length > DEMO_PAYLOAD_MAX_BYTES:
+            return _error_response(
+                413,
+                "PAYLOAD_TOO_LARGE",
+                "Payload too large for demo mode.",
+                request_id,
+                {"max_bytes": DEMO_PAYLOAD_MAX_BYTES},
+            )
+
+    key = f"{request.client.host if request.client else 'unknown'}:{action}"
+    now = time.time()
+    entry = _DEMO_LIMITER.get(key)
+    if not entry or entry["reset_at"] <= now:
+        _DEMO_LIMITER[key] = {"count": 1, "reset_at": now + DEMO_RATE_LIMIT_WINDOW_S}
+        return None
+    if entry["count"] >= DEMO_RATE_LIMIT_MAX:
+        return _error_response(
+            429,
+            "RATE_LIMITED",
+            "Rate limit exceeded in demo mode.",
+            request_id,
+            {"limit": DEMO_RATE_LIMIT_MAX},
+        )
+    entry["count"] += 1
+    return None
 START_TIME = time.time()
 
 cors_origins_env = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
@@ -168,6 +211,7 @@ def _code_for_status(status_code: int) -> str:
         403: "FORBIDDEN",
         404: "NOT_FOUND",
         409: "CONFLICT",
+        413: "PAYLOAD_TOO_LARGE",
         422: "VALIDATION_ERROR",
         429: "RATE_LIMITED",
         502: "UPSTREAM_ERROR",
@@ -390,6 +434,9 @@ def recommend(request: RecommendationRequest, req: Request) -> RecommendationRes
     for influencer–campaign fit.
     """
     require_tenant(req)
+    demo_limit = _enforce_demo_limits(req, "recommend")
+    if demo_limit is not None:
+        return demo_limit
     return compute_recommendations(request)
 
 
@@ -522,6 +569,9 @@ def rag_influencers(query: RagQuery, request: Request) -> list[RagInfluencerHit]
     """
 
     tenant_id = require_tenant(request)
+    demo_limit = _enforce_demo_limits(request, "rag")
+    if demo_limit is not None:
+        return demo_limit
     start = time.perf_counter()
     results: list[tuple[InfluencerDoc, float]] = search_influencers(
         query.query,
@@ -575,6 +625,9 @@ def chat_strategy(req: ChatRequest, request: Request) -> ChatResponse:
 
     request_id = getattr(request.state, "request_id", None) or uuid4().hex
     require_tenant(request)
+    demo_limit = _enforce_demo_limits(request, "chat-strategy")
+    if demo_limit is not None:
+        return demo_limit
     start_time = time.perf_counter()
     campaign = req.campaign
     normalized_campaign = {

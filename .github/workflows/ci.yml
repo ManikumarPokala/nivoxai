@@ -33,14 +33,14 @@ jobs:
           cd backend-ai
           PYTHONPATH=. python -m eval.run_eval
 
-      - name: Run tests if present
+      - name: Run backend-ai tests
         run: |
-          if [ -d backend-ai/tests ] || [ -d backend-ai/test ]; then
-            cd backend-ai
-            python -m pytest -q || true
-          else
-            echo "No backend-ai tests found."
-          fi
+          cd backend-ai
+          python -m pytest -q
+
+      - name: Run redteam harness
+        run: |
+          python eval/run_redteam.py
 
   backend-api-build:
     runs-on: ubuntu-latest
@@ -65,14 +65,10 @@ jobs:
           cd backend-api
           npm run build
 
-      - name: Run tests if present
+      - name: Run backend-api tests
         run: |
-          if [ -f backend-api/package.json ] && [ -d backend-api/tests ]; then
-            cd backend-api
-            npm test || true
-          else
-            echo "No backend-api tests found."
-          fi
+          cd backend-api
+          npm test
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -138,3 +134,22 @@ jobs:
 
       - name: Run backend-ai tests
         run: make test-ai
+
+  integration-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and start services
+        run: |
+          docker compose up -d --build
+
+      - name: Run smoke checks
+        run: |
+          scripts/ci_smoke.sh
+
+      - name: Tear down services
+        if: always()
+        run: |
+          docker compose down -v

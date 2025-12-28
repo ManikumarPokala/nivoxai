@@ -92,6 +92,13 @@ const DEFAULT_USER_PASSWORD = process.env.DEMO_USER_PASSWORD ?? "demo";
 const DEFAULT_USER_B_EMAIL = process.env.DEMO_USER_B_EMAIL ?? "user@tenantb.local";
 const DEFAULT_USER_B_NAME = process.env.DEMO_USER_B_NAME ?? "Tenant B User";
 const DEFAULT_USER_B_ROLE = process.env.DEMO_USER_B_ROLE ?? "brand_user";
+const DEMO_MODE = process.env.DEMO_MODE === "true";
+const DEMO_ADMIN_KEY = process.env.DEMO_ADMIN_KEY ?? "";
+const DEMO_RATE_LIMIT_MAX = Number(process.env.DEMO_RATE_LIMIT_MAX ?? "30");
+const DEMO_RATE_LIMIT_WINDOW_MS = Number(
+  process.env.DEMO_RATE_LIMIT_WINDOW_MS ?? "60000"
+);
+const DEMO_PAYLOAD_MAX_BYTES = Number(process.env.DEMO_PAYLOAD_MAX_BYTES ?? "20000");
 
 const ERROR_CODE_BY_STATUS: Record<number, string> = {
   400: "BAD_REQUEST",
@@ -99,6 +106,7 @@ const ERROR_CODE_BY_STATUS: Record<number, string> = {
   403: "FORBIDDEN",
   404: "NOT_FOUND",
   409: "CONFLICT",
+  413: "PAYLOAD_TOO_LARGE",
   422: "VALIDATION_ERROR",
   429: "RATE_LIMITED",
   502: "UPSTREAM_ERROR",
@@ -195,6 +203,58 @@ const buildAiHeaders = (req: RequestContext): Record<string, string> => {
     headers["X-Tenant-Id"] = String(req.headers["x-tenant-id"]);
   }
   return headers;
+};
+
+const demoLimiter = new Map<string, { count: number; resetAt: number }>();
+
+const enforceDemoRateLimit = (req: Request, res: Response, next: () => void) => {
+  if (!DEMO_MODE) {
+    next();
+    return;
+  }
+  const key = `${req.ip}:${req.path}`;
+  const now = Date.now();
+  const entry = demoLimiter.get(key);
+  if (!entry || entry.resetAt <= now) {
+    demoLimiter.set(key, { count: 1, resetAt: now + DEMO_RATE_LIMIT_WINDOW_MS });
+    next();
+    return;
+  }
+  if (entry.count >= DEMO_RATE_LIMIT_MAX) {
+    res.status(429).json({ error: "Rate limit exceeded in demo mode." });
+    return;
+  }
+  entry.count += 1;
+  next();
+};
+
+const enforceDemoPayloadCap = (req: Request, res: Response, next: () => void) => {
+  if (!DEMO_MODE) {
+    next();
+    return;
+  }
+  const lengthHeader = req.header("content-length");
+  if (lengthHeader) {
+    const length = Number(lengthHeader);
+    if (!Number.isNaN(length) && length > DEMO_PAYLOAD_MAX_BYTES) {
+      res.status(413).json({ error: "Payload too large for demo mode." });
+      return;
+    }
+  }
+  next();
+};
+
+const enforceDemoAdminKey = (req: Request, res: Response, next: () => void) => {
+  if (!DEMO_MODE) {
+    next();
+    return;
+  }
+  const key = req.header("x-demo-admin-key");
+  if (!DEMO_ADMIN_KEY || key !== DEMO_ADMIN_KEY) {
+    res.status(403).json({ error: "Demo admin key required." });
+    return;
+  }
+  next();
 };
 
 const ensureAnalyticsTables = async () => {
@@ -510,8 +570,9 @@ app.use((req: RequestContext, res: Response, next) => {
 });
 app.options(/.*/, cors(corsOptions));
 app.use(express.json());
+app.use(/^\/admin/, enforceDemoAdminKey);
 
-app.post("/auth/login", async (req: Request, res: Response) => {
+app.post("/auth/login", enforceDemoRateLimit, enforceDemoPayloadCap, async (req: Request, res: Response) => {
   const { email, password, tenant_id } = req.body as {
     email?: string;
     password?: string;
@@ -609,7 +670,7 @@ app.get("/api/model/status", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/recommend", async (req: Request, res: Response) => {
+app.post("/recommend", enforceDemoRateLimit, enforceDemoPayloadCap, async (req: Request, res: Response) => {
   console.log("Incoming /recommend request");
   const auth = getAuth(req);
   const { campaign, influencers } = req.body as RecommendationRequest;
@@ -688,7 +749,11 @@ app.post("/recommend", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/rag/influencers", async (req: Request, res: Response) => {
+app.post(
+  "/rag/influencers",
+  enforceDemoRateLimit,
+  enforceDemoPayloadCap,
+  async (req: Request, res: Response) => {
   const auth = getAuth(req);
   const { query, top_k } = req.body as { query?: string; top_k?: number };
   if (!query) {
@@ -710,7 +775,7 @@ app.post("/rag/influencers", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/chat", async (req: Request, res: Response) => {
+app.post("/chat", enforceDemoRateLimit, enforceDemoPayloadCap, async (req: Request, res: Response) => {
   const auth = getAuth(req);
   const { campaign, recommendations, question } = req.body as {
     campaign?: Record<string, unknown>;
@@ -908,6 +973,10 @@ app.get("/analytics/campaign/:campaignId", async (req: Request, res: Response) =
 
 app.get("/v1/analytics/campaign/:campaignId", async (req: Request, res: Response) => {
   return handleCampaignAnalytics(req, res);
+});
+
+app.get("/admin/ping", requireRole(["admin"]), async (_req: Request, res: Response) => {
+  res.json({ status: "ok" });
 });
 
 async function handleAnalyticsSummary(req: Request, res: Response) {

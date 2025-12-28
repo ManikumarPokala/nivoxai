@@ -48,6 +48,7 @@ export default function AppShell({ children }: AppShellProps) {
     { label: "QA RAG", href: "/qa/rag" },
     { label: "QA Agent", href: "/qa/agent" },
     { label: "QA Analytics", href: "/qa/analytics" },
+    { label: "QA Admin", href: "/qa/admin" },
   ];
 
   const titleMap: Record<string, string> = {
@@ -64,6 +65,7 @@ export default function AppShell({ children }: AppShellProps) {
     "/qa/rag": "QA RAG",
     "/qa/agent": "QA Agent",
     "/qa/analytics": "QA Analytics",
+    "/qa/admin": "QA Admin",
   };
 
   const pageTitle = useMemo(() => {
