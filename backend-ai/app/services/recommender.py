@@ -78,6 +78,14 @@ def compute_recommendations(
                 influencer_id=influencer.id,
                 score=round(score, 4),
                 reasons=reasons,
+                score_breakdown={
+                    "content_match": round(0.4 * content_score, 4),
+                    "region_match": round(0.25 * region_score, 4),
+                    "engagement": round(0.25 * engagement_score, 4),
+                    "age_match": round(0.10 * age_match_score, 4),
+                    "freshness_multiplier": round(freshness_multiplier, 4),
+                },
+                confidence=round(score, 4),
             )
         )
 

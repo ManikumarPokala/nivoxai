@@ -40,8 +40,14 @@ export default function AppShell({ children }: AppShellProps) {
     { label: t("nav_discovery"), href: "/discovery" },
     { label: t("nav_analytics"), href: "/analytics" },
     { label: t("nav_settings"), href: "/settings" },
+    { label: "Demo", href: "/demo" },
     { label: "QA Ops", href: "/qa/ops" },
     { label: "QA Auth", href: "/qa/auth" },
+    { label: "QA Campaigns", href: "/qa/campaigns" },
+    { label: "QA Recommend", href: "/qa/recommend" },
+    { label: "QA RAG", href: "/qa/rag" },
+    { label: "QA Agent", href: "/qa/agent" },
+    { label: "QA Analytics", href: "/qa/analytics" },
   ];
 
   const titleMap: Record<string, string> = {
@@ -50,6 +56,14 @@ export default function AppShell({ children }: AppShellProps) {
     "/discovery": t("page_discovery_title"),
     "/analytics": t("page_analytics_title"),
     "/settings": t("page_settings_title"),
+    "/demo": "Reviewer Demo",
+    "/qa/ops": "QA Ops",
+    "/qa/auth": "QA Auth",
+    "/qa/campaigns": "QA Campaigns",
+    "/qa/recommend": "QA Recommend",
+    "/qa/rag": "QA RAG",
+    "/qa/agent": "QA Agent",
+    "/qa/analytics": "QA Analytics",
   };
 
   const pageTitle = useMemo(() => {

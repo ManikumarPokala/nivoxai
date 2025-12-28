@@ -229,6 +229,13 @@ class RagInfluencerHit(BaseModel):
     category: str
     region: str
     score: float
+    tenant_id: str | None = None
+    source: str | None = None
+    last_updated_at: str | None = None
+    mode: str | None = None
+    rerank: bool | None = None
+    candidate_k: int | None = None
+    timings_ms: int | None = None
 
 
 # --------- CHAT / STRATEGY MODELS ---------
@@ -270,6 +277,9 @@ class AgentStep(BaseModel):
     name: str
     summary: str
     latency_ms: int | None = None
+    tool_input: dict | None = None
+    tool_output: dict | None = None
+    replanned: bool | None = None
 
 
 class ChatResponse(BaseModel):
@@ -510,6 +520,7 @@ def rag_influencers(query: RagQuery, request: Request) -> list[RagInfluencerHit]
     """
 
     tenant_id = require_tenant(request)
+    start = time.perf_counter()
     results: list[tuple[InfluencerDoc, float]] = search_influencers(
         query.query,
         top_k=query.top_k,
@@ -518,6 +529,7 @@ def rag_influencers(query: RagQuery, request: Request) -> list[RagInfluencerHit]
         candidate_k=query.candidate_k,
         tenant_id=tenant_id,
     )
+    latency_ms = max(1, int(round((time.perf_counter() - start) * 1000)))
 
     hits: list[RagInfluencerHit] = [
         RagInfluencerHit(
@@ -527,6 +539,13 @@ def rag_influencers(query: RagQuery, request: Request) -> list[RagInfluencerHit]
             category=doc.category,
             region=doc.region,
             score=round(score, 4),
+            tenant_id=doc.tenant_id,
+            source=doc.source,
+            last_updated_at=doc.last_updated_at,
+            mode=query.mode or os.environ.get("RAG_DEFAULT_MODE", "hybrid"),
+            rerank=query.rerank,
+            candidate_k=query.candidate_k,
+            timings_ms=latency_ms,
         )
         for doc, score in results
     ]

@@ -20,6 +20,8 @@ class InfluencerDoc:
     category: str
     region: str
     tenant_id: str | None = None
+    source: str | None = None
+    last_updated_at: str | None = None
 
 
 INFLUENCER_DOCS: List[InfluencerDoc] = [
@@ -30,6 +32,8 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         category="beauty",
         region="Thailand",
         tenant_id=None,
+        source="profile_ingestion",
+        last_updated_at="2025-01-12T10:00:00Z",
     ),
     InfluencerDoc(
         id="doc-002",
@@ -38,6 +42,8 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         category="skincare",
         region="Vietnam",
         tenant_id=None,
+        source="profile_ingestion",
+        last_updated_at="2025-01-10T08:30:00Z",
     ),
     InfluencerDoc(
         id="doc-003",
@@ -46,6 +52,8 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         category="gaming",
         region="United States",
         tenant_id=None,
+        source="profile_ingestion",
+        last_updated_at="2025-01-05T12:00:00Z",
     ),
     InfluencerDoc(
         id="doc-004",
@@ -54,6 +62,8 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         category="fitness",
         region="Singapore",
         tenant_id=None,
+        source="profile_ingestion",
+        last_updated_at="2025-01-08T09:15:00Z",
     ),
     InfluencerDoc(
         id="doc-005",
@@ -62,6 +72,8 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         category="tech",
         region="India",
         tenant_id=None,
+        source="profile_ingestion",
+        last_updated_at="2025-01-07T14:20:00Z",
     ),
     InfluencerDoc(
         id="doc-006",
@@ -70,6 +82,8 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         category="travel",
         region="Italy",
         tenant_id=None,
+        source="profile_ingestion",
+        last_updated_at="2025-01-03T16:10:00Z",
     ),
     InfluencerDoc(
         id="doc-007",
@@ -78,6 +92,8 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         category="food",
         region="South Korea",
         tenant_id=None,
+        source="profile_ingestion",
+        last_updated_at="2025-01-09T11:45:00Z",
     ),
     InfluencerDoc(
         id="doc-008",
@@ -86,6 +102,8 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         category="fashion",
         region="United Kingdom",
         tenant_id=None,
+        source="profile_ingestion",
+        last_updated_at="2025-01-06T18:05:00Z",
     ),
 ]
 

@@ -331,6 +331,9 @@ const ensureAnalyticsTables = async () => {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  await pool.query(
+    `ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`
+  );
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS audit_log (
@@ -863,12 +866,36 @@ app.post(
   }
 );
 
+app.patch(
+  "/campaigns/:id",
+  requireRole(["admin", "brand_user"]),
+  async (req: Request, res: Response) => {
+    return handleCampaignUpdate(req, res);
+  }
+);
+
+app.patch(
+  "/v1/campaigns/:id",
+  requireRole(["admin", "brand_user"]),
+  async (req: Request, res: Response) => {
+    return handleCampaignUpdate(req, res);
+  }
+);
+
 app.get("/analytics/summary", async (req: Request, res: Response) => {
   return handleAnalyticsSummary(req, res);
 });
 
 app.get("/v1/analytics/summary", async (req: Request, res: Response) => {
   return handleAnalyticsSummary(req, res);
+});
+
+app.get("/analytics/events", async (req: Request, res: Response) => {
+  return handleAnalyticsEvents(req, res);
+});
+
+app.get("/v1/analytics/events", async (req: Request, res: Response) => {
+  return handleAnalyticsEvents(req, res);
 });
 
 /* ============================================================
@@ -929,6 +956,35 @@ async function handleAnalyticsSummary(req: Request, res: Response) {
   } catch (dbError) {
     console.log("Failed to load analytics summary:", dbError);
     res.status(500).json({ error: "Failed to load analytics summary." });
+  }
+}
+
+async function handleAnalyticsEvents(req: Request, res: Response) {
+  const tenantScope = getTenantScope(req);
+  const limit = Math.min(Number(req.query.limit ?? 50), 200);
+  const eventType = typeof req.query.event_type === "string" ? req.query.event_type : null;
+  const campaignId =
+    typeof req.query.campaign_id === "string" ? req.query.campaign_id : null;
+
+  try {
+    const result = await pool.query(
+      `SELECT id, created_at, user_id, tenant_id, event_type, campaign_id, influencer_id, metadata
+       FROM analytics_events
+       WHERE tenant_id = $1
+         AND ($2::text IS NULL OR event_type = $2)
+         AND ($3::text IS NULL OR campaign_id = $3)
+       ORDER BY created_at DESC
+       LIMIT $4`,
+      [tenantScope, eventType, campaignId, limit]
+    );
+
+    res.json({
+      events: result.rows,
+      lastUpdatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Failed to load analytics events:", error);
+    res.status(500).json({ error: "Failed to load analytics events." });
   }
 }
 
@@ -1146,6 +1202,56 @@ async function handleCampaignDetail(req: Request, res: Response) {
   } catch (error) {
     console.error("Failed to load campaign:", error);
     res.status(500).json({ error: "Failed to load campaign." });
+  }
+}
+
+async function handleCampaignUpdate(req: Request, res: Response) {
+  const tenantScope = getTenantScope(req);
+  const { id } = req.params;
+  const {
+    brand_name,
+    goal,
+    target_region,
+    target_age_range,
+    budget,
+    description,
+  } = req.body as {
+    brand_name?: string;
+    goal?: string;
+    target_region?: string;
+    target_age_range?: string;
+    budget?: number;
+    description?: string;
+  };
+
+  try {
+    const exists = await pool.query(
+      `SELECT id FROM campaigns WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+      [id, tenantScope]
+    );
+    if (!exists.rows[0]) {
+      res.status(404).json({ error: "Campaign not found." });
+      return;
+    }
+
+    const result = await pool.query(
+      `UPDATE campaigns
+       SET brand_name = COALESCE($1, brand_name),
+           goal = COALESCE($2, goal),
+           target_region = COALESCE($3, target_region),
+           target_age_range = COALESCE($4, target_age_range),
+           budget = COALESCE($5, budget),
+           description = COALESCE($6, description),
+           updated_at = NOW()
+       WHERE id = $7 AND tenant_id = $8
+       RETURNING id, brand_name, goal, target_region, target_age_range, budget, description`,
+      [brand_name, goal, target_region, target_age_range, budget, description, id, tenantScope]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Failed to update campaign:", error);
+    res.status(500).json({ error: "Failed to update campaign." });
   }
 }
 

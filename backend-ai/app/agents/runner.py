@@ -82,6 +82,13 @@ def run_strategy_agent(
                 "name": "plan",
                 "summary": _summarize_plan(plan),
                 "latency_ms": max(1, int(round(ms))),
+                "tool_input": {
+                    "constraints": constraints,
+                    "rec_summary": rec_summary,
+                    "user_question": user_question,
+                },
+                "tool_output": plan,
+                "replanned": False,
             }
         )
 
@@ -110,15 +117,27 @@ def run_strategy_agent(
                 "name": "draft",
                 "summary": "Generated strategy draft.",
                 "latency_ms": max(1, int(round(ms))),
+                "tool_input": {
+                    "campaign_id": campaign.get("id"),
+                    "recommendations_count": len(recommendations),
+                    "user_question": user_question,
+                },
+                "tool_output": {
+                    "model": model_used,
+                    "fallback_used": fallback_used,
+                },
+                "replanned": False,
             }
         )
 
         # Review step
         t0 = time.perf_counter()
         ok, issues = reviewer.review_draft(draft, campaign)
+        replanned = False
         if not ok:
             fixes = "\n".join([f"- {issue}" for issue in issues])
             draft = f"{draft}\n\nFixes:\n{fixes}"
+            replanned = True
             ok, issues = reviewer.review_draft(draft, campaign)
         if not ok:
             draft = _build_deterministic_reply(plan, rec_summary)
@@ -130,6 +149,9 @@ def run_strategy_agent(
                 "name": "review",
                 "summary": "Validated draft against campaign constraints.",
                 "latency_ms": max(1, int(round(ms))),
+                "tool_input": {"issues": issues},
+                "tool_output": {"ok": ok},
+                "replanned": replanned,
             }
         )
 
@@ -153,6 +175,9 @@ def run_strategy_agent(
                 "name": "error",
                 "summary": "Fallback to deterministic reply after exception.",
                 "latency_ms": None,
+                "tool_input": {"error": str(exc)},
+                "tool_output": {"fallback_used": True},
+                "replanned": False,
             }
         )
         return {

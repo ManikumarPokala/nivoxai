@@ -39,6 +39,8 @@ class RecommendationResponseItem(BaseModel):
     influencer_id: str
     score: float
     reasons: List[str]
+    score_breakdown: dict | None = None
+    confidence: float | None = None
 
 
 class RecommendationResponse(BaseModel):
