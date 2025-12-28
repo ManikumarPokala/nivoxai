@@ -27,7 +27,7 @@ test-api:
 
 test: test-api test-ai
 
-.PHONY: db-seed-check onboard verify
+.PHONY: db-seed-check onboard verify check-onboard
 
 db-seed-check:
 	@docker exec -i nivoxai-backend-api test -f /app/scripts/seed-analytics.ts
@@ -46,6 +46,11 @@ onboard:
 	$(MAKE) db-seed
 	$(MAKE) eval-save
 	$(MAKE) demo
+
+check-onboard:
+	@echo "Run ONE of the following:"
+	@echo " make onboard # full clean flow"
+	@echo " make verify # fast check"
 
 demo:
 	./scripts/demo.sh
