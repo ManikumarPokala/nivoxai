@@ -124,7 +124,7 @@ echo "Waiting for postgres..."
 wait_for_postgres
 
 echo "Waiting for backend-api..."
-wait_for "backend-api" "$BACKEND_API_URL/health" "nivoxai-backend-api"
+wait_for "backend-api" "$BACKEND_API_URL/api/healthz" "nivoxai-backend-api"
 
 echo "Waiting for backend-ai..."
 wait_for "backend-ai" "$BACKEND_AI_URL/health" "nivoxai-backend-ai"

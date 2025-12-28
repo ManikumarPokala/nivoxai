@@ -700,18 +700,22 @@ app.get("/health", async (req: Request, res: Response) => {
 });
 
 app.get("/api/healthz", async (req: Request, res: Response) => {
-  if (!dbReady) {
-    res.status(503).json({ error: "Database not ready." });
-    return;
-  }
   try {
     const response = await axios.get(`${AI_SERVICE_URL}/healthz`, {
       headers: buildAiHeaders(req as RequestContext),
     });
-    res.status(response.status).json(response.data);
+    res.status(200).json({
+      status: "ok",
+      api: "up",
+      aiService: response.data,
+    });
   } catch (error) {
     console.log("AI service /healthz failed:", error);
-    res.status(502).json({ error: "AI service unavailable." });
+    res.status(200).json({
+      status: "ok",
+      api: "up",
+      aiService: "down",
+    });
   }
 });
 

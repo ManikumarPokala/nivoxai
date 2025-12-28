@@ -17,8 +17,13 @@ export default function QAAdminPage() {
   const runAdminPing = async () => {
     setError(null);
     setResult(null);
+    const trimmedKey = demoKey.trim();
+    if (!trimmedKey) {
+      setError("Demo admin key required.");
+      return;
+    }
     const response = await requestJson<{ status?: string }>("/api/admin/ping", {
-      headers: demoKey ? { "x-demo-admin-key": demoKey } : undefined,
+      headers: { "x-demo-admin-key": trimmedKey },
     });
     if (response.error) {
       const statusLabel = response.status ? ` (${response.status})` : "";
