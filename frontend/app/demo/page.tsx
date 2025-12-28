@@ -14,7 +14,11 @@ export default function DemoPage() {
 
   const startDemo = async () => {
     const result = await requestJson("/api/auth/demo", { method: "POST" });
-    setStatus(result.error ? `Failed: ${result.error}` : "Session active");
+    setStatus(
+      result.error
+        ? `${t("demo_session_failed")}: ${result.error}`
+        : t("demo_session_active")
+    );
   };
 
   return (
@@ -22,18 +26,18 @@ export default function DemoPage() {
       <header className="space-y-2">
         <p className="text-xs uppercase tracking-[0.3em] text-slate-400">{t("demo_flow")}</p>
         <h1 className="text-2xl font-semibold text-slate-900">{t("demo_title")}</h1>
-        <p className="text-sm text-slate-600">
-          Follow the steps below to exercise recommendations, agent trace, and analytics.
-        </p>
+        <p className="text-sm text-slate-600">{t("demo_flow_desc")}</p>
       </header>
 
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Step 1 — {t("demo_start_session")}</h3>
-          <p className="text-sm text-slate-500">Bootstrap auth + tenant cookies</p>
+          <h3 className="text-lg font-semibold">
+            {t("demo_step_prefix")} 1 — {t("demo_step_auth")}
+          </h3>
+          <p className="text-sm text-slate-500">{t("demo_step_auth_desc")}</p>
         </CardHeader>
         <CardBody className="space-y-3">
-          <Button onClick={startDemo}>
+          <Button onClick={startDemo} className="w-full sm:w-auto">
             <span className="flex items-center gap-2">
               <PlayCircle className="h-4 w-4" />
               {t("demo_start_session")}
@@ -46,48 +50,42 @@ export default function DemoPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Step 2 — {t("demo_step_campaigns")}</h3>
-            <p className="text-sm text-slate-500">Create or select a campaign</p>
+            <h3 className="text-lg font-semibold">
+              {t("demo_step_prefix")} 2 — {t("demo_step_campaigns")}
+            </h3>
+            <p className="text-sm text-slate-500">{t("demo_step_campaigns_desc")}</p>
           </CardHeader>
           <CardBody>
             <Link href="/qa/campaigns" className="text-sm font-semibold text-slate-700">
-              Open QA Campaigns →
+              {t("demo_link_campaigns")} →
             </Link>
           </CardBody>
         </Card>
 
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Step 3 — {t("demo_step_recommend")}</h3>
-            <p className="text-sm text-slate-500">Run ranking + explainability</p>
+            <h3 className="text-lg font-semibold">
+              {t("demo_step_prefix")} 3 — {t("demo_step_recommend")}
+            </h3>
+            <p className="text-sm text-slate-500">{t("demo_step_recommend_desc")}</p>
           </CardHeader>
           <CardBody>
             <Link href="/qa/recommend" className="text-sm font-semibold text-slate-700">
-              Open QA Recommend →
+              {t("demo_link_recommend")} →
             </Link>
           </CardBody>
         </Card>
 
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Step 4 — {t("demo_step_agent")}</h3>
-            <p className="text-sm text-slate-500">Generate strategy + trace</p>
+            <h3 className="text-lg font-semibold">
+              {t("demo_step_prefix")} 4 — {t("demo_step_agent")}
+            </h3>
+            <p className="text-sm text-slate-500">{t("demo_step_agent_desc")}</p>
           </CardHeader>
           <CardBody>
             <Link href="/qa/agent" className="text-sm font-semibold text-slate-700">
-              Open QA Agent →
-            </Link>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Step 5 — {t("demo_step_analytics")}</h3>
-            <p className="text-sm text-slate-500">Summary + events</p>
-          </CardHeader>
-          <CardBody>
-            <Link href="/qa/analytics" className="text-sm font-semibold text-slate-700">
-              Open QA Analytics →
+              {t("demo_link_agent")} →
             </Link>
           </CardBody>
         </Card>
@@ -96,14 +94,41 @@ export default function DemoPage() {
       <Card>
         <CardHeader>
           <h3 className="text-lg font-semibold">{t("demo_diagnostics")}</h3>
-          <p className="text-sm text-slate-500">
-            Use the Diagnostics drawer to inspect every request.
-          </p>
+          <p className="text-sm text-slate-500">{t("demo_diagnostics_desc")}</p>
         </CardHeader>
         <CardBody>
           <Link href="/qa/ops" className="text-sm font-semibold text-slate-700">
-            Open QA Ops →
+            {t("demo_link_ops")} →
           </Link>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h3 className="text-lg font-semibold">{t("demo_signals_title")}</h3>
+          <p className="text-sm text-slate-500">{t("demo_signals_desc")}</p>
+        </CardHeader>
+        <CardBody className="flex flex-wrap gap-3 text-sm">
+          <Link href="/qa/ops" className="rounded-full border border-slate-200 px-3 py-2 text-slate-700">
+            {t("demo_signals_diagnostics")}
+          </Link>
+          <Link href="/qa/rag" className="rounded-full border border-slate-200 px-3 py-2 text-slate-700">
+            {t("demo_signals_rag")}
+          </Link>
+          <a
+            href="https://github.com/manikumarpokala/nivoxai/blob/main/docs/SAFETY.md"
+            className="rounded-full border border-slate-200 px-3 py-2 text-slate-700"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("demo_signals_safety")}
+          </a>
+          <a
+            href="https://github.com/manikumarpokala/nivoxai/actions/workflows/ci.yml"
+            className="rounded-full border border-slate-200 px-3 py-2 text-slate-700"
+          >
+            {t("demo_signals_ci")}
+          </a>
         </CardBody>
       </Card>
     </div>

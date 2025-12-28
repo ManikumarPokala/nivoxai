@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PlayCircle, Zap } from "lucide-react";
+import { PlayCircle, Sparkles, Zap } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import JsonPanel from "@/components/ui/JsonPanel";
 import { useI18n } from "@/i18n";
 
 type Campaign = {
@@ -109,6 +110,12 @@ export default function QARecommendPage() {
     rerank: RecommendationItem[];
   } | null>(null);
 
+  const modeLabels: Record<"baseline" | "hybrid" | "rerank", string> = {
+    baseline: t("qa_recommend_mode_baseline"),
+    hybrid: t("qa_recommend_mode_hybrid"),
+    rerank: t("qa_recommend_mode_rerank"),
+  };
+
   const activeCampaign = useMemo(
     () => campaigns.find((c) => c.id === campaignId) ?? null,
     [campaigns, campaignId]
@@ -149,7 +156,7 @@ export default function QARecommendPage() {
       try {
         payload = JSON.parse(payloadJson);
       } catch {
-        setError("Invalid JSON payload.");
+        setError(t("qa_recommend_invalid_json"));
         return;
       }
     } else {
@@ -175,7 +182,7 @@ export default function QARecommendPage() {
       body: JSON.stringify(payload),
     });
     if (response.error || !response.data) {
-      setError(response.error ?? "Failed to run recommendations.");
+      setError(response.error ?? t("qa_recommend_failed"));
       return;
     }
     const hybrid = response.data.recommendations.slice(0, topK);
@@ -194,45 +201,48 @@ export default function QARecommendPage() {
   return (
     <div className="space-y-6 px-6 py-8">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">QA Console</p>
-        <h1 className="text-2xl font-semibold text-slate-900">Recommendations</h1>
-        <p className="text-sm text-slate-600">
-          Send recommendation requests and compare baseline vs hybrid outputs.
+        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+          {t("qa_console_label")}
         </p>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <Sparkles className="h-6 w-6 text-slate-700" />
+          {t("nav_qa_recommend")}
+        </h1>
+        <p className="text-sm text-slate-600">{t("qa_recommend_desc")}</p>
       </header>
 
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Request Builder</h3>
+          <h3 className="text-lg font-semibold">{t("qa_recommend_request")}</h3>
           <p className="text-sm text-slate-500">POST /api/recommendations</p>
         </CardHeader>
         <CardBody className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={loadCampaigns}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button onClick={loadCampaigns} className="w-full sm:w-auto">
               <span className="flex items-center gap-2">
                 <PlayCircle className="h-4 w-4" />
                 {t("action_load_campaigns")}
               </span>
             </Button>
-            <Button onClick={runRecommend}>
+            <Button onClick={runRecommend} className="w-full sm:w-auto">
               <span className="flex items-center gap-2">
                 <Zap className="h-4 w-4" />
                 {t("action_run_recommend")}
               </span>
             </Button>
-            <Button variant="ghost" onClick={runAbCompare}>
-              Run A/B compare
+            <Button variant="ghost" onClick={runAbCompare} className="w-full sm:w-auto">
+              {t("qa_recommend_run_ab")}
             </Button>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <label className="text-xs text-slate-500">
-              Campaign
+              {t("qa_recommend_campaign_label")}
               <select
                 value={campaignId}
                 onChange={(event) => setCampaignId(event.target.value)}
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
               >
-                <option value="">Demo campaign</option>
+                <option value="">{t("qa_recommend_demo_campaign")}</option>
                 {campaigns.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.brand_name}
@@ -241,19 +251,19 @@ export default function QARecommendPage() {
               </select>
             </label>
             <label className="text-xs text-slate-500">
-              Mode
+              {t("qa_recommend_mode")}
               <select
                 value={mode}
                 onChange={(event) => setMode(event.target.value as typeof mode)}
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
               >
-                <option value="baseline">Baseline</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="rerank">Hybrid + Rerank</option>
+                <option value="baseline">{t("qa_recommend_mode_baseline")}</option>
+                <option value="hybrid">{t("qa_recommend_mode_hybrid")}</option>
+                <option value="rerank">{t("qa_recommend_mode_rerank")}</option>
               </select>
             </label>
             <label className="text-xs text-slate-500">
-              top_k
+              {t("qa_recommend_topk")}
               <input
                 type="number"
                 min={1}
@@ -266,7 +276,7 @@ export default function QARecommendPage() {
           <textarea
             value={payloadJson}
             onChange={(event) => setPayloadJson(event.target.value)}
-            placeholder="Paste or generate payload JSON"
+            placeholder={t("qa_recommend_payload_placeholder")}
             rows={6}
             className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
           />
@@ -277,8 +287,8 @@ export default function QARecommendPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Results</h3>
-            <p className="text-sm text-slate-500">Ranked influencer list</p>
+            <h3 className="text-lg font-semibold">{t("qa_recommend_results")}</h3>
+            <p className="text-sm text-slate-500">{t("qa_recommend_ranked_list")}</p>
           </CardHeader>
           <CardBody className="space-y-3">
             {results?.recommendations?.length ? (
@@ -286,17 +296,24 @@ export default function QARecommendPage() {
                 <div key={item.influencer_id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-slate-900">{item.influencer_id}</span>
-                    <span className="text-emerald-600">score {item.score.toFixed(3)}</span>
+                    <span className="text-emerald-600">
+                      {t("qa_recommend_score_label")} {item.score.toFixed(3)}
+                    </span>
                   </div>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    {item.reasons?.join(" • ") || "No reasons returned"}
+                    {item.reasons?.join(" • ") || t("qa_recommend_no_reasons")}
                   </p>
                   {item.score_breakdown ? (
-                    <pre className="mt-2 rounded-lg bg-slate-50 p-2 text-[11px] text-slate-700">
-                      {JSON.stringify(item.score_breakdown, null, 2)}
-                    </pre>
+                    <div className="mt-2">
+                      <JsonPanel
+                        title={t("qa_recommend_score_label")}
+                        data={item.score_breakdown}
+                      />
+                    </div>
                   ) : (
-                    <p className="mt-2 text-[11px] text-slate-400">No score breakdown provided.</p>
+                    <p className="mt-2 text-[11px] text-slate-400">
+                      {t("qa_recommend_no_breakdown")}
+                    </p>
                   )}
                 </div>
               ))
@@ -308,14 +325,16 @@ export default function QARecommendPage() {
 
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">A/B Compare</h3>
-            <p className="text-sm text-slate-500">Baseline vs hybrid vs rerank</p>
+            <h3 className="text-lg font-semibold">{t("qa_recommend_ab")}</h3>
+            <p className="text-sm text-slate-500">{t("qa_recommend_ab_desc")}</p>
           </CardHeader>
           <CardBody className="space-y-3 text-xs text-slate-600">
             {abCompare ? (
-              ["baseline", "hybrid", "rerank"].map((key) => (
+              (["baseline", "hybrid", "rerank"] as const).map((key) => (
                 <div key={key}>
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">{key}</p>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                    {modeLabels[key]}
+                  </p>
                   <div className="mt-2 space-y-1">
                     {(abCompare as any)[key].map((item: RecommendationItem, idx: number) => (
                       <div key={item.influencer_id} className="flex items-center justify-between">
@@ -329,7 +348,7 @@ export default function QARecommendPage() {
                 </div>
               ))
             ) : (
-              <p className="text-xs text-slate-500">Run A/B compare to view rankings.</p>
+              <p className="text-xs text-slate-500">{t("qa_recommend_ab_empty")}</p>
             )}
           </CardBody>
         </Card>

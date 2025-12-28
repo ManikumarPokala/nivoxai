@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, PlusCircle, RefreshCcw, Save } from "lucide-react";
+import { AlertTriangle, PlusCircle, RefreshCcw, Save, Target } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import JsonPanel from "@/components/ui/JsonPanel";
 import { useI18n } from "@/i18n";
 
 type Campaign = {
@@ -72,7 +73,7 @@ export default function QACampaignsPage() {
 
   const updateCampaign = async () => {
     if (!selectedId) {
-      setUpdateStatus("Select a campaign first.");
+      setUpdateStatus(t("empty_select_campaign"));
       return;
     }
     const result = await requestJson<Campaign>(`/api/campaigns/${selectedId}`, {
@@ -83,7 +84,7 @@ export default function QACampaignsPage() {
         description: formState.description,
       }),
     });
-    setUpdateStatus(result.error ? `Failed: ${result.error}` : "Updated");
+    setUpdateStatus(result.error ? `${t("status_fail")}: ${result.error}` : t("status_pass"));
     if (!result.error) {
       await loadCampaigns();
     }
@@ -100,28 +101,31 @@ export default function QACampaignsPage() {
   return (
     <div className="space-y-6 px-6 py-8">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">QA Console</p>
-        <h1 className="text-2xl font-semibold text-slate-900">Campaigns</h1>
-        <p className="text-sm text-slate-600">
-          CRUD coverage for campaign APIs. All requests are logged in the Inspector.
+        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+          {t("qa_console_label")}
         </p>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <Target className="h-6 w-6 text-slate-700" />
+          {t("nav_qa_campaigns")}
+        </h1>
+        <p className="text-sm text-slate-600">{t("qa_campaigns_desc")}</p>
       </header>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Campaign List</h3>
-            <p className="text-sm text-slate-500">GET /api/campaigns</p>
+            <h3 className="text-lg font-semibold">{t("qa_campaigns_list")}</h3>
+            <p className="text-sm text-slate-500">{t("qa_campaigns_get")}</p>
           </CardHeader>
           <CardBody>
-            <div className="flex gap-2">
-              <Button onClick={loadCampaigns}>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button onClick={loadCampaigns} className="w-full sm:w-auto">
                 <span className="flex items-center gap-2">
                   <RefreshCcw className="h-4 w-4" />
                   {t("action_refresh")}
                 </span>
               </Button>
-              <Button variant="ghost" onClick={sendInvalidPayload}>
+              <Button variant="ghost" onClick={sendInvalidPayload} className="w-full sm:w-auto">
                 <span className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
                   {t("action_invalid_payload")}
@@ -156,18 +160,18 @@ export default function QACampaignsPage() {
 
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Create / Update</h3>
-            <p className="text-sm text-slate-500">POST + PATCH</p>
+            <h3 className="text-lg font-semibold">{t("qa_campaigns_create_update")}</h3>
+            <p className="text-sm text-slate-500">{t("qa_campaigns_post_patch")}</p>
           </CardHeader>
           <CardBody className="space-y-3 text-sm text-slate-600">
             <div className="grid gap-3 md:grid-cols-2">
               {(
                 [
-                  ["brand_name", "Brand name"],
-                  ["goal", "Goal"],
-                  ["target_region", "Region"],
-                  ["target_age_range", "Age range"],
-                  ["budget", "Budget"],
+                  ["brand_name", t("field_brand_name")],
+                  ["goal", t("field_goal")],
+                  ["target_region", t("field_region")],
+                  ["target_age_range", t("field_age_range")],
+                  ["budget", t("field_budget")],
                 ] as const
               ).map(([field, label]) => (
                 <label key={field} className="text-xs">
@@ -192,7 +196,7 @@ export default function QACampaignsPage() {
             </div>
             <label className="text-xs">
               <span className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                Description
+                {t("field_description")}
               </span>
               <textarea
                 value={formState.description}
@@ -203,14 +207,14 @@ export default function QACampaignsPage() {
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
               />
             </label>
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={createCampaign}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button onClick={createCampaign} className="w-full sm:w-auto">
                 <span className="flex items-center gap-2">
                   <PlusCircle className="h-4 w-4" />
                   {t("action_create_campaign")}
                 </span>
               </Button>
-              <Button variant="ghost" onClick={updateCampaign}>
+              <Button variant="ghost" onClick={updateCampaign} className="w-full sm:w-auto">
                 <span className="flex items-center gap-2">
                   <Save className="h-4 w-4" />
                   {t("action_update_campaign")}
@@ -222,7 +226,7 @@ export default function QACampaignsPage() {
             </div>
             {selectedCampaign ? (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <p className="font-semibold">Selected campaign</p>
+                <p className="font-semibold">{t("qa_campaigns_selected")}</p>
                 <p className="mt-1">{selectedCampaign.brand_name}</p>
                 <p className="text-[11px] text-slate-500">{selectedCampaign.id}</p>
               </div>
@@ -233,13 +237,11 @@ export default function QACampaignsPage() {
 
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Raw JSON</h3>
-          <p className="text-sm text-slate-500">Payload preview</p>
+          <h3 className="text-lg font-semibold">{t("qa_campaigns_raw")}</h3>
+          <p className="text-sm text-slate-500">{t("qa_campaigns_payload_preview")}</p>
         </CardHeader>
         <CardBody>
-          <pre className="max-h-80 overflow-auto rounded-2xl bg-slate-900 p-4 text-xs text-slate-100">
-            {rawPayload}
-          </pre>
+          <JsonPanel title={t("qa_campaigns_payload_preview")} data={rawPayload} defaultOpen />
         </CardBody>
       </Card>
     </div>

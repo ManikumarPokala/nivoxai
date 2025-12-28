@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Database, Search } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -57,39 +57,43 @@ export default function QARagPage() {
   return (
     <div className="space-y-6 px-6 py-8">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">QA Console</p>
-        <h1 className="text-2xl font-semibold text-slate-900">RAG Retrieval</h1>
-        <p className="text-sm text-slate-600">
-          Test vector/keyword/hybrid modes with rerank toggles and metadata.
+        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+          {t("qa_console_label")}
         </p>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <Database className="h-6 w-6 text-slate-700" />
+          {t("nav_qa_rag")}
+        </h1>
+        <p className="text-sm text-slate-600">{t("qa_rag_desc")}</p>
       </header>
 
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Query</h3>
+          <h3 className="text-lg font-semibold">{t("qa_rag_query")}</h3>
           <p className="text-sm text-slate-500">POST /api/rag</p>
         </CardHeader>
         <CardBody className="space-y-3">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("qa_rag_query_placeholder")}
             className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
           />
           <div className="grid gap-3 md:grid-cols-4">
             <label className="text-xs text-slate-500">
-              Mode
+              {t("qa_rag_mode")}
               <select
                 value={mode}
                 onChange={(event) => setMode(event.target.value as typeof mode)}
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
               >
-                <option value="vector">Vector</option>
-                <option value="keyword">Keyword</option>
-                <option value="hybrid">Hybrid</option>
+                <option value="vector">{t("qa_rag_mode_vector")}</option>
+                <option value="keyword">{t("qa_rag_mode_keyword")}</option>
+                <option value="hybrid">{t("qa_rag_mode_hybrid")}</option>
               </select>
             </label>
             <label className="text-xs text-slate-500">
-              top_k
+              {t("qa_rag_topk")}
               <input
                 type="number"
                 value={topK}
@@ -98,7 +102,7 @@ export default function QARagPage() {
               />
             </label>
             <label className="text-xs text-slate-500">
-              candidate_k
+              {t("qa_rag_candidate_k")}
               <input
                 type="number"
                 value={candidateK}
@@ -112,10 +116,10 @@ export default function QARagPage() {
                 checked={rerank}
                 onChange={(event) => setRerank(event.target.checked)}
               />
-              Rerank
+              {t("qa_rag_rerank")}
             </label>
           </div>
-          <Button onClick={runSearch}>
+          <Button onClick={runSearch} className="w-full sm:w-auto">
             <span className="flex items-center gap-2">
               <Search className="h-4 w-4" />
               {t("action_run_rag")}
@@ -127,8 +131,8 @@ export default function QARagPage() {
 
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Results</h3>
-          <p className="text-sm text-slate-500">Top matches with metadata</p>
+          <h3 className="text-lg font-semibold">{t("qa_rag_results")}</h3>
+          <p className="text-sm text-slate-500">{t("qa_rag_results_desc")}</p>
         </CardHeader>
         <CardBody className="space-y-3">
           {results.length ? (
@@ -136,25 +140,47 @@ export default function QARagPage() {
               <div key={hit.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-slate-900">{hit.name}</p>
-                  <span className="text-emerald-600">score {hit.score.toFixed(3)}</span>
+                  <span className="text-emerald-600">
+                    {t("qa_recommend_score_label")} {hit.score.toFixed(3)}
+                  </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">{hit.bio}</p>
                 <div className="mt-2 grid gap-1 text-[11px] text-slate-500 md:grid-cols-2">
-                  <span>category: {hit.category}</span>
-                  <span>region: {hit.region}</span>
-                  <span>tenant: {hit.tenant_id ?? "public"}</span>
-                  <span>source: {hit.source ?? "n/a"}</span>
-                  <span>last_updated: {hit.last_updated_at ?? "n/a"}</span>
-                  <span>freshness_days: {hit.freshness_days ?? "n/a"}</span>
-                  <span>freshness_score: {hit.freshness_score ?? "n/a"}</span>
-                  <span>mode: {hit.mode ?? mode}</span>
-                  <span>rerank: {String(hit.rerank ?? rerank)}</span>
-                  <span>latency_ms: {hit.timings_ms ?? "n/a"}</span>
+                  <span>
+                    {t("qa_rag_label_category")}: {hit.category}
+                  </span>
+                  <span>
+                    {t("qa_rag_label_region")}: {hit.region}
+                  </span>
+                  <span>
+                    {t("qa_rag_label_tenant")}: {hit.tenant_id ?? t("qa_label_public")}
+                  </span>
+                  <span>
+                    {t("qa_rag_label_source")}: {hit.source ?? t("qa_label_na")}
+                  </span>
+                  <span>
+                    {t("qa_rag_label_last_updated")}: {hit.last_updated_at ?? t("qa_label_na")}
+                  </span>
+                  <span>
+                    {t("qa_rag_label_freshness_days")}: {hit.freshness_days ?? t("qa_label_na")}
+                  </span>
+                  <span>
+                    {t("qa_rag_label_freshness_score")}: {hit.freshness_score ?? t("qa_label_na")}
+                  </span>
+                  <span>
+                    {t("qa_rag_label_mode")}: {hit.mode ?? mode}
+                  </span>
+                  <span>
+                    {t("qa_rag_label_rerank")}: {String(hit.rerank ?? rerank)}
+                  </span>
+                  <span>
+                    {t("qa_rag_label_latency")}: {hit.timings_ms ?? t("qa_label_na")}
+                  </span>
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-xs text-slate-500">{t("empty_no_results")}</p>
+            <p className="text-xs text-slate-500">{t("qa_rag_no_hits")}</p>
           )}
         </CardBody>
       </Card>

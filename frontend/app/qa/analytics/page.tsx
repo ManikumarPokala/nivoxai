@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, RefreshCcw, Zap } from "lucide-react";
+import { Activity, BarChart3, RefreshCcw, Zap } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import JsonPanel from "@/components/ui/JsonPanel";
 import { useI18n } from "@/i18n";
 
 type AnalyticsSummary = {
@@ -111,27 +112,30 @@ export default function QAAnalyticsPage() {
   return (
     <div className="space-y-6 px-6 py-8">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">QA Console</p>
-        <h1 className="text-2xl font-semibold text-slate-900">Analytics</h1>
-        <p className="text-sm text-slate-600">
-          Summary KPIs, campaign analytics, and event stream.
+        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+          {t("qa_console_label")}
         </p>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <BarChart3 className="h-6 w-6 text-slate-700" />
+          {t("nav_qa_analytics")}
+        </h1>
+        <p className="text-sm text-slate-600">{t("qa_analytics_desc")}</p>
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={loadSummary}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <Button onClick={loadSummary} className="w-full sm:w-auto">
           <span className="flex items-center gap-2">
             <RefreshCcw className="h-4 w-4" />
             {t("action_refresh")}
           </span>
         </Button>
-        <Button variant="ghost" onClick={loadEvents}>
+        <Button variant="ghost" onClick={loadEvents} className="w-full sm:w-auto">
           <span className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             {t("action_refresh")}
           </span>
         </Button>
-        <Button variant="ghost" onClick={fireTestEvent}>
+        <Button variant="ghost" onClick={fireTestEvent} className="w-full sm:w-auto">
           <span className="flex items-center gap-2">
             <Zap className="h-4 w-4" />
             {t("action_fire_test_event")}
@@ -143,24 +147,30 @@ export default function QAAnalyticsPage() {
 
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Summary</h3>
-          <p className="text-sm text-slate-500">GET /api/analytics/summary</p>
+          <h3 className="text-lg font-semibold">{t("qa_analytics_summary")}</h3>
+          <p className="text-sm text-slate-500">{t("qa_analytics_summary_desc")}</p>
         </CardHeader>
         <CardBody className="grid gap-4 md:grid-cols-3 text-sm text-slate-600">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Total Events</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              {t("qa_analytics_total_events")}
+            </p>
             <p className="text-xl font-semibold text-slate-900">
               {summary?.total_events ?? "—"}
             </p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Recommendations</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              {t("qa_analytics_recommendations")}
+            </p>
             <p className="text-xl font-semibold text-slate-900">
               {summary?.total_recommendations ?? "—"}
             </p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Top Goals</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              {t("qa_analytics_top_goals")}
+            </p>
             <p className="text-xl font-semibold text-slate-900">
               {summary?.top_goals?.length ?? 0}
             </p>
@@ -170,21 +180,25 @@ export default function QAAnalyticsPage() {
 
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Campaign Analytics</h3>
-          <p className="text-sm text-slate-500">GET /api/analytics/campaign/:id</p>
+          <h3 className="text-lg font-semibold">{t("qa_analytics_campaign")}</h3>
+          <p className="text-sm text-slate-500">{t("qa_analytics_campaign_desc")}</p>
         </CardHeader>
         <CardBody className="space-y-3">
           <input
             value={campaignId}
             onChange={(event) => setCampaignId(event.target.value)}
-            placeholder="Campaign ID"
+            placeholder={t("qa_analytics_campaign_placeholder")}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
           />
-          <Button onClick={loadCampaignAnalytics}>Load campaign analytics</Button>
+          <Button onClick={loadCampaignAnalytics} className="w-full sm:w-auto">
+            {t("qa_analytics_load_campaign")}
+          </Button>
           {campaignAnalytics ? (
-            <pre className="rounded-2xl bg-slate-900 p-4 text-xs text-slate-100">
-              {JSON.stringify(campaignAnalytics, null, 2)}
-            </pre>
+            <JsonPanel
+              title={t("qa_analytics_campaign")}
+              data={campaignAnalytics}
+              defaultOpen
+            />
           ) : (
             <p className="text-xs text-slate-500">{t("empty_no_results")}</p>
           )}
@@ -193,21 +207,21 @@ export default function QAAnalyticsPage() {
 
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Event Stream</h3>
-          <p className="text-sm text-slate-500">GET /api/analytics/events</p>
+          <h3 className="text-lg font-semibold">{t("qa_analytics_events")}</h3>
+          <p className="text-sm text-slate-500">{t("qa_analytics_events_desc")}</p>
         </CardHeader>
         <CardBody className="space-y-3 text-sm text-slate-600">
           <div className="grid gap-2 md:grid-cols-2">
             <input
               value={eventType}
               onChange={(event) => setEventType(event.target.value)}
-              placeholder="Filter by event_type"
+              placeholder={t("qa_filter_event_type")}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
             />
             <input
               value={campaignId}
               onChange={(event) => setCampaignId(event.target.value)}
-              placeholder="Filter by campaign_id"
+              placeholder={t("qa_filter_campaign_id")}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
             />
           </div>
@@ -219,15 +233,19 @@ export default function QAAnalyticsPage() {
                   <span className="text-slate-500">{event.created_at}</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  campaign: {event.campaign_id ?? "—"} • influencer: {event.influencer_id ?? "—"}
+                  {t("qa_analytics_campaign_label")}: {event.campaign_id ?? "—"} •{" "}
+                  {t("qa_analytics_influencer_label")}: {event.influencer_id ?? "—"}
                 </p>
-                <pre className="mt-2 rounded-lg bg-slate-50 p-2 text-[11px] text-slate-700">
-                  {JSON.stringify(event.metadata ?? {}, null, 2)}
-                </pre>
+                <div className="mt-2">
+                  <JsonPanel
+                    title={t("qa_analytics_event_metadata")}
+                    data={event.metadata ?? {}}
+                  />
+                </div>
               </div>
             ))}
             {!events.length ? (
-              <p className="text-xs text-slate-500">{t("empty_no_results")}</p>
+              <p className="text-xs text-slate-500">{t("qa_analytics_events_empty")}</p>
             ) : null}
           </div>
         </CardBody>

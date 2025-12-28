@@ -1,58 +1,59 @@
 [![CI](https://github.com/manikumarpokala/nivoxai/actions/workflows/ci.yml/badge.svg)](https://github.com/manikumarpokala/nivoxai/actions/workflows/ci.yml)
 
-AI-Powered Brand–Influencer Matching & Campaign Intelligence Platform
+# NivoxAI
 
-Deployed Demo (placeholder): https://demo.nivoxai.example
+## What this is
+NivoxAI is a production-style Influmatch demo: influencer ranking + agentic strategy + RAG + analytics with safety controls, observability, and CI quality gates.
 
-Start here (reviewers)
-1) Open /demo
-2) Then /qa/agent (trace + safety)
-3) Then /qa/rag (hybrid + freshness)
-4) Then /qa/recommend (explainability + A/B)
+Deployed demo (placeholder): https://<your-demo-url>
+
+## 2-minute reviewer path
+1) Open `/demo`
+2) Complete Step 1–4
+3) Use Diagnostics to inspect `x-request-id` and error schema
+4) Review `/qa/agent` (trace), `/qa/rag` (freshness/provenance), `/qa/admin` (guardrails)
+
+## Demo Admin Key (demo-only, non-production)
+`DEMO_ADMIN_KEY=DEMO_ONLY_READ_ACCESS_2025`
+
+Used only for protected demo admin actions (guardrails). Never use in production.
+
+## JD-aligned highlights
+- Recommendation/ranking + explainability
+- Agentic AI with tools + safety + fallbacks + trace
+- RAG: freshness, provenance, tenant isolation
+- Observability: request IDs + diagnostics
+- CI quality gates: tests + redteam + smoke
+
+## Run locally
+1) `docker compose up -d --build`
+2) Open `http://localhost:3000/demo`
+
+## Quality checks
+- `make redteam`
+- `bash scripts/ci_smoke.sh`
 
 Author: Manikumar Pokala
 Contact: manikumarp183@gmail.com
-
-Reviewer Quickstart (5 minutes)
-
-1) Build & start:
-   docker compose up -d --build
-2) Seed DB (optional but recommended):
-   make db-reset
-   make db-seed
-3) Run tests:
-   make test
-4) Run evaluation:
-   make eval
-   make eval-ranking
-   make eval-rag
-5) Verify multi-tenancy quickly:
-   curl -i http://localhost:4000/v1/analytics/summary
-   TOKEN=$(curl -s http://localhost:4000/auth/login -H "Content-Type: application/json" -d '{"email":"admin@nivoxai.local","password":"demo"}' | python -c 'import sys,json; print(json.load(sys.stdin)["token"])')
-   curl -H "Authorization: Bearer $TOKEN" http://localhost:4000/v1/analytics/summary
-   TENANT_B_TOKEN=$(curl -s http://localhost:4000/auth/login -H "Content-Type: application/json" -d '{"email":"user@tenantb.local","password":"demo"}' | python -c 'import sys,json; print(json.load(sys.stdin)["token"])')
-   curl -i -H "Authorization: Bearer $TENANT_B_TOKEN" http://localhost:4000/v1/analytics/campaign/camp-demo-001
-6) Open UI:
-   http://localhost:3000
-
-Local Quickstart
-1) docker compose up -d --build
-2) make db-seed
-3) make demo
-4) open http://localhost:3000/demo
 
 Architecture (high level)
 
 Frontend (Next.js) → backend-api (Express) → backend-ai (FastAPI)
                           ↘ Postgres (events, analytics, campaigns)
 
+Architecture diagram (ASCII)
+
+Browser
+  └─ Next.js UI (/demo, /qa/*)
+        ├─ backend-api (Express) ── Postgres
+        └─ backend-ai (FastAPI) ── RAG + Agents
+
 UI Auth & Diagnostics
 
-- Paste JWT and tenant_id in Settings → "Auth / Session" (stored as `nivoxai_jwt` and `nivoxai_tenant_id`).
-- `make demo` prints DEMO_ADMIN_JWT + DEMO_TENANT_ID for copy/paste into Settings.
-- Session cookie verification: `scripts/verify-session.sh` (requires frontend running on :3000).
-- Diagnostics drawer shows last 20 requests with request IDs and status codes.
-- If you see 401/403, confirm the token role and tenant in Settings.
+- Demo sessions bootstrap automatically from `/demo` and persist via cookies.
+- Admin guardrails require the demo key (see `/qa/admin`).
+- Diagnostics drawer shows the last 20 requests with request IDs and status codes.
+- If you see 401/403, reset the demo session from the header and retry.
 
 What to look at
 

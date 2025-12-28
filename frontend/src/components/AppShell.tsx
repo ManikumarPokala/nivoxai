@@ -8,16 +8,16 @@ import { useI18n } from "@/i18n";
 import {
   Activity,
   BarChart3,
-  Brain,
+  Bot,
+  Database,
   FileCheck2,
-  FolderKanban,
   KeyRound,
+  Lock,
   MoreVertical,
   PlayCircle,
-  Radar,
   ShieldCheck,
-  Stethoscope,
-  Zap,
+  Sparkles,
+  Target,
 } from "lucide-react";
 import DiagnosticsDrawer from "@/components/DiagnosticsDrawer";
 import ToastViewport from "@/components/ui/ToastViewport";
@@ -50,14 +50,14 @@ export default function AppShell({ children }: AppShellProps) {
 
   const navItems = [
     { label: t("nav_demo"), href: "/demo", icon: PlayCircle },
-    { label: t("nav_qa_ops"), href: "/qa/ops", icon: Stethoscope },
-    { label: t("nav_qa_auth"), href: "/qa/auth", icon: ShieldCheck },
-    { label: t("nav_qa_campaigns"), href: "/qa/campaigns", icon: FolderKanban },
-    { label: t("nav_qa_recommend"), href: "/qa/recommend", icon: Zap },
-    { label: t("nav_qa_rag"), href: "/qa/rag", icon: Radar },
-    { label: t("nav_qa_agent"), href: "/qa/agent", icon: Brain },
+    { label: t("nav_qa_ops"), href: "/qa/ops", icon: ShieldCheck },
+    { label: t("nav_qa_auth"), href: "/qa/auth", icon: KeyRound },
+    { label: t("nav_qa_campaigns"), href: "/qa/campaigns", icon: Target },
+    { label: t("nav_qa_recommend"), href: "/qa/recommend", icon: Sparkles },
+    { label: t("nav_qa_rag"), href: "/qa/rag", icon: Database },
+    { label: t("nav_qa_agent"), href: "/qa/agent", icon: Bot },
     { label: t("nav_qa_analytics"), href: "/qa/analytics", icon: BarChart3 },
-    { label: t("nav_qa_admin"), href: "/qa/admin", icon: KeyRound },
+    { label: t("nav_qa_admin"), href: "/qa/admin", icon: Lock },
   ];
 
   const titleMap: Record<string, string> = {
@@ -145,7 +145,7 @@ export default function AppShell({ children }: AppShellProps) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-[#f7f6f2] to-slate-100 text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-[#f7f6f2] to-slate-100 text-slate-900">
       <div className="flex">
         <aside
           className={cn(
@@ -160,7 +160,7 @@ export default function AppShell({ children }: AppShellProps) {
             <div>
               <div className="text-lg font-semibold">NivoxAI</div>
               <div className="text-[10px] uppercase tracking-[0.25em] text-slate-400">
-                MarTech Suite
+                {t("label_suite")}
               </div>
             </div>
           </div>
@@ -193,8 +193,8 @@ export default function AppShell({ children }: AppShellProps) {
 
           <div className="mt-auto pt-10">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-              <p className="font-semibold text-slate-700">Workspace</p>
-              <p className="mt-1">NivoxAI Demo • Heuristic v1</p>
+              <p className="font-semibold text-slate-700">{t("label_workspace")}</p>
+              <p className="mt-1">{t("label_workspace_hint")}</p>
             </div>
           </div>
         </aside>
@@ -207,7 +207,7 @@ export default function AppShell({ children }: AppShellProps) {
                   type="button"
                   className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 lg:hidden"
                   onClick={() => setIsOpen((prev) => !prev)}
-                  aria-label="Toggle navigation"
+                  aria-label={t("label_menu")}
                 >
                   <span className="block h-0.5 w-4 rounded-full bg-slate-600" />
                   <span className="block h-0.5 w-4 rounded-full bg-slate-600" />
@@ -215,7 +215,7 @@ export default function AppShell({ children }: AppShellProps) {
                 </button>
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                    Workspace
+                    {t("label_workspace")}
                   </p>
                   <h1 className="text-lg font-semibold text-slate-900">
                     {pageTitle}
@@ -226,8 +226,9 @@ export default function AppShell({ children }: AppShellProps) {
               <div className="hidden items-center gap-3 lg:flex">
                 {sessionStatus === "ready" ? (
                   <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    {t("header_session_active")} • {sessionTenant ?? "tenant"} •{" "}
-                    {sessionRole ?? "role"}
+                    {t("header_session_active")} • {t("label_tenant")}{" "}
+                    {sessionTenant ?? t("status_missing")} • {t("label_role")}{" "}
+                    {sessionRole ?? t("status_missing")}
                   </span>
                 ) : (
                   <button
@@ -298,7 +299,7 @@ export default function AppShell({ children }: AppShellProps) {
                   type="button"
                   onClick={() => setActionsOpen((prev) => !prev)}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600"
-                  aria-label="Menu"
+                  aria-label={t("label_menu")}
                 >
                   <MoreVertical className="h-4 w-4" />
                 </button>
@@ -324,7 +325,7 @@ export default function AppShell({ children }: AppShellProps) {
                         {t("header_reset_session")}
                       </button>
                       <div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
-                        <span className="text-slate-500">Lang</span>
+                        <span className="text-slate-500">{t("label_language")}</span>
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
@@ -366,7 +367,7 @@ export default function AppShell({ children }: AppShellProps) {
             {children}
           </main>
           <footer className="border-t border-slate-200/70 bg-white/80 px-4 py-3 text-xs text-slate-500 lg:px-10">
-            Build {gitSha}
+            {t("label_build")} {gitSha}
           </footer>
         </div>
       </div>
@@ -376,7 +377,7 @@ export default function AppShell({ children }: AppShellProps) {
           type="button"
           className="fixed inset-0 z-30 bg-black/20 lg:hidden"
           onClick={() => setIsOpen(false)}
-          aria-label="Close navigation overlay"
+          aria-label={t("label_close_navigation")}
         />
       ) : null}
 

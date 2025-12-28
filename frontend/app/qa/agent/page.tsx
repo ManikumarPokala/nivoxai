@@ -5,6 +5,7 @@ import { Bot, PlayCircle } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import JsonPanel from "@/components/ui/JsonPanel";
 import { useI18n } from "@/i18n";
 
 type Campaign = {
@@ -119,7 +120,7 @@ export default function QAAgentPage() {
       body: JSON.stringify({ campaign, influencers: demoInfluencers }),
     });
     if (recResult.error || !recResult.data) {
-      setError(recResult.error ?? "Recommendation failed.");
+      setError(recResult.error ?? t("qa_agent_recommend_failed"));
       setRunning(false);
       return;
     }
@@ -132,7 +133,7 @@ export default function QAAgentPage() {
       }),
     });
     if (agentResult.error || !agentResult.data) {
-      setError(agentResult.error ?? "Agent failed.");
+      setError(agentResult.error ?? t("qa_agent_failed"));
       setRunning(false);
       return;
     }
@@ -145,25 +146,30 @@ export default function QAAgentPage() {
   return (
     <div className="space-y-6 px-6 py-8">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">QA Console</p>
-        <h1 className="text-2xl font-semibold text-slate-900">Agent Strategy</h1>
-        <p className="text-sm text-slate-600">Run the strategy agent and inspect trace.</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+          {t("qa_console_label")}
+        </p>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <Bot className="h-6 w-6 text-slate-700" />
+          {t("nav_qa_agent")}
+        </h1>
+        <p className="text-sm text-slate-600">{t("qa_agent_desc")}</p>
       </header>
 
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Run agent</h3>
+          <h3 className="text-lg font-semibold">{t("qa_agent_run")}</h3>
           <p className="text-sm text-slate-500">POST /api/chat-strategy</p>
         </CardHeader>
         <CardBody className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={loadCampaigns}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button onClick={loadCampaigns} className="w-full sm:w-auto">
               <span className="flex items-center gap-2">
                 <PlayCircle className="h-4 w-4" />
                 {t("action_load_campaigns")}
               </span>
             </Button>
-            <Button onClick={runAgent} disabled={running}>
+            <Button onClick={runAgent} disabled={running} className="w-full sm:w-auto">
               <span className="flex items-center gap-2">
                 <Bot className="h-4 w-4" />
                 {running ? t("status_loading") : t("action_run_agent")}
@@ -175,7 +181,7 @@ export default function QAAgentPage() {
             onChange={(event) => setCampaignId(event.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
           >
-            <option value="">Demo campaign</option>
+            <option value="">{t("qa_recommend_demo_campaign")}</option>
             {campaigns.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.brand_name}
@@ -189,8 +195,8 @@ export default function QAAgentPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Strategy Output</h3>
-            <p className="text-sm text-slate-500">Final reply</p>
+            <h3 className="text-lg font-semibold">{t("qa_agent_output")}</h3>
+            <p className="text-sm text-slate-500">{t("qa_agent_reply_label")}</p>
           </CardHeader>
           <CardBody>
             {response?.reply ? (
@@ -198,11 +204,12 @@ export default function QAAgentPage() {
                 {response.reply}
               </pre>
             ) : (
-              <p className="text-xs text-slate-500">No agent output yet.</p>
+              <p className="text-xs text-slate-500">{t("qa_agent_no_output")}</p>
             )}
             {response ? (
               <p className="mt-2 text-xs text-slate-500">
-                model: {response.model ?? "n/a"} • fallback:{" "}
+                {t("qa_agent_model_label")}: {response.model ?? t("qa_label_na")} •{" "}
+                {t("qa_agent_fallback_label")}:{" "}
                 {String(response.fallback_used ?? false)}
               </p>
             ) : null}
@@ -211,8 +218,8 @@ export default function QAAgentPage() {
 
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold">Trace Timeline</h3>
-            <p className="text-sm text-slate-500">Planner → tools → reviewer</p>
+            <h3 className="text-lg font-semibold">{t("qa_agent_trace")}</h3>
+            <p className="text-sm text-slate-500">{t("qa_agent_trace_desc")}</p>
           </CardHeader>
           <CardBody className="space-y-3 text-xs text-slate-600">
             {trace.length ? (
@@ -220,30 +227,40 @@ export default function QAAgentPage() {
                 <div key={`${step.name}-${idx}`} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-slate-900">{step.name}</p>
-                    <span className="text-slate-500">{step.latency_ms ?? 0}ms</span>
+                    <span className="text-slate-500">
+                      {t("qa_agent_trace_latency")}: {step.latency_ms ?? 0}ms
+                    </span>
                   </div>
                   <p className="mt-1 text-[11px] text-slate-500">{step.summary}</p>
                   {step.replanned ? (
-                    <p className="mt-2 text-[11px] text-amber-600">replanned</p>
+                    <p className="mt-2 text-[11px] text-amber-600">
+                      {t("qa_agent_replanned")}
+                    </p>
                   ) : null}
                   {step.tool_input ? (
-                    <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-slate-950 p-3 text-[10px] text-slate-200">
-                      {JSON.stringify(step.tool_input, null, 2)}
-                    </pre>
+                    <div className="mt-2">
+                      <JsonPanel
+                        title={t("qa_agent_input")}
+                        data={step.tool_input}
+                      />
+                    </div>
                   ) : null}
                   {step.tool_output ? (
-                    <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-slate-900 p-3 text-[10px] text-slate-100">
-                      {JSON.stringify(step.tool_output, null, 2)}
-                    </pre>
+                    <div className="mt-2">
+                      <JsonPanel
+                        title={t("qa_agent_output")}
+                        data={step.tool_output}
+                      />
+                    </div>
                   ) : (
                     <p className="mt-2 text-[11px] text-slate-400">
-                      tool_input/output not provided by backend
+                      {t("qa_agent_tool_missing")}
                     </p>
                   )}
                 </div>
               ))
             ) : (
-              <p className="text-xs text-slate-500">No trace yet.</p>
+              <p className="text-xs text-slate-500">{t("qa_agent_no_trace")}</p>
             )}
           </CardBody>
         </Card>

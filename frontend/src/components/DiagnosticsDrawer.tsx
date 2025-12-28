@@ -119,24 +119,29 @@ export default function DiagnosticsDrawer({ open, onClose }: DiagnosticsDrawerPr
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               {t("diagnostics_base_urls")}
             </p>
-            <p className="mt-2 text-xs text-slate-600">API: {API_BASE_URL}</p>
-            <p className="text-xs text-slate-600">AI: {AI_BASE_URL}</p>
+            <p className="mt-2 text-xs text-slate-600">
+              {t("label_api")}: {API_BASE_URL}
+            </p>
+            <p className="text-xs text-slate-600">
+              {t("label_ai")}: {AI_BASE_URL}
+            </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               {t("diagnostics_session")}
             </p>
             <p className="mt-2">
-              {t("label_token_present")}: {tokenPresent ? "present" : "missing"}
+              {t("label_token_present")}:{" "}
+              {tokenPresent ? t("status_present") : t("status_missing")}
             </p>
             <p>
-              {t("label_tenant")}: {tenantId ?? "not set"}
+              {t("label_tenant")}: {tenantId ?? t("status_missing")}
             </p>
             <p>
               {t("label_cookie_session")}:{" "}
               {cookieSession?.tenant_id
-                ? `${cookieSession.tenant_id} • ${cookieSession.role ?? "role"}`
-                : "missing"}
+                ? `${cookieSession.tenant_id} • ${cookieSession.role ?? t("label_role")}`
+                : t("status_missing")}
             </p>
           </div>
 
@@ -145,7 +150,8 @@ export default function DiagnosticsDrawer({ open, onClose }: DiagnosticsDrawerPr
               <p className="font-semibold">{t("diagnostics_last_error")}</p>
               <p className="mt-1">{lastError.error}</p>
               <p className="mt-1 text-[11px] text-rose-600">
-                {lastError.method} {lastError.path} • {lastError.requestId ?? "no request id"}
+                {lastError.method} {lastError.path} •{" "}
+                {lastError.requestId ?? t("label_no_request_id")}
               </p>
             </div>
           ) : null}
@@ -158,22 +164,42 @@ export default function DiagnosticsDrawer({ open, onClose }: DiagnosticsDrawerPr
               <p className="mt-2 font-semibold text-slate-700">
                 {lastRequest.method} {lastRequest.path}
               </p>
-              <p>
-                {t("label_status")}: {lastRequest.status || "ERR"}
-              </p>
+              <div className="flex items-center gap-2">
+                <span>{t("label_status")}:</span>
+                <span
+                  className={
+                    lastRequest.status >= 400
+                      ? "rounded-full bg-rose-100 px-2 py-0.5 text-[11px] text-rose-700"
+                      : "rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] text-emerald-700"
+                  }
+                >
+                  {lastRequest.status || t("status_error")}
+                </span>
+              </div>
               <p>
                 {t("label_latency")}: {lastRequest.durationMs}ms
               </p>
               <p>
-                {t("label_tenant")}: {lastRequest.tenantId ?? "none"}
+                {t("label_tenant")}: {lastRequest.tenantId ?? t("status_none")}
               </p>
-              <p>
-                {t("label_request_id")}: {lastRequest.requestId ?? "none"}
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p>
+                  {t("label_request_id")}: {lastRequest.requestId ?? t("status_none")}
+                </p>
+                {lastRequest.requestId ? (
+                  <button
+                    onClick={() => copyText(lastRequest.requestId ?? "")}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-[11px] text-slate-600"
+                  >
+                    <Copy className="h-3 w-3" />
+                    {t("action_copy")}
+                  </button>
+                ) : null}
+              </div>
               <div className="mt-2 space-y-2">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                    Request headers
+                    {t("label_request_headers")}
                   </p>
                   <pre className="mt-1 max-h-20 overflow-auto rounded-lg bg-slate-50 p-2 text-[11px] text-slate-700">
                     {JSON.stringify(lastRequest.requestHeaders ?? {}, null, 2)}
@@ -181,7 +207,7 @@ export default function DiagnosticsDrawer({ open, onClose }: DiagnosticsDrawerPr
                 </div>
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                    Response headers
+                    {t("label_response_headers")}
                   </p>
                   <pre className="mt-1 max-h-20 overflow-auto rounded-lg bg-slate-50 p-2 text-[11px] text-slate-700">
                     {JSON.stringify(lastRequest.responseHeaders ?? {}, null, 2)}
@@ -230,16 +256,33 @@ export default function DiagnosticsDrawer({ open, onClose }: DiagnosticsDrawerPr
                         <MethodIcon className="h-4 w-4 text-slate-500" />
                         {log.method} {log.path}
                       </span>
-                      <span className={log.status >= 400 ? "text-rose-600" : "text-emerald-600"}>
-                        {log.status || "ERR"}
+                      <span
+                        className={
+                          log.status >= 400
+                            ? "rounded-full bg-rose-100 px-2 py-0.5 text-[11px] text-rose-700"
+                            : "rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] text-emerald-700"
+                        }
+                      >
+                        {log.status || t("status_error")}
                       </span>
                     </div>
-                    <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+                    <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                       <span>{log.durationMs}ms</span>
-                      <span>{log.requestId ?? "no request id"}</span>
+                      <span className="flex items-center gap-2">
+                        {log.requestId ?? t("label_no_request_id")}
+                        {log.requestId ? (
+                          <button
+                            onClick={() => copyText(log.requestId ?? "")}
+                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-[11px] text-slate-600"
+                          >
+                            <Copy className="h-3 w-3" />
+                            {t("action_copy")}
+                          </button>
+                        ) : null}
+                      </span>
                     </div>
                     <div className="mt-1 text-[11px] text-slate-400">
-                      tenant: {log.tenantId ?? "none"}
+                      {t("label_tenant")}: {log.tenantId ?? t("status_none")}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button
