@@ -27,7 +27,21 @@ test-api:
 
 test: test-api test-ai
 
-.PHONY: db-seed-check onboard verify check-onboard
+.DEFAULT_GOAL := help
+
+.PHONY: help check-shell-mistake db-seed-check onboard verify check-onboard eval-save demo test test-api test-ai db-seed
+
+help:
+	@echo "make onboard        # full clean flow"
+	@echo "make verify         # fast check"
+	@echo "make db-seed        # seed analytics"
+	@echo "make demo           # run demo"
+	@echo "make check-onboard  # guidance only"
+
+check-shell-mistake:
+	@echo "Do NOT paste Makefile lines into zsh."
+	@echo "Only run \`make <target>\` in terminal."
+	@echo "Example: make onboard"
 
 db-seed-check:
 	@docker exec -i nivoxai-backend-api test -f /app/scripts/seed-analytics.ts
