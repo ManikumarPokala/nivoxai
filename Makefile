@@ -27,10 +27,10 @@ test-api:
 
 test: test-api test-ai
 
-.PHONY: db-seed-check onboard
+.PHONY: db-seed-check onboard verify
 
 db-seed-check:
-	docker exec -i nivoxai-backend-api test -f /app/scripts/seed-analytics.ts
+	@docker exec -i nivoxai-backend-api test -f /app/scripts/seed-analytics.ts
 
 verify:
 	docker compose up -d --build
@@ -41,7 +41,8 @@ onboard:
 	@echo "Full onboarding: clean -> build -> verify -> seed -> eval -> demo"
 	docker compose down -v
 	docker compose up -d --build
-	$(MAKE) verify
+	$(MAKE) test
+	$(MAKE) db-seed-check
 	$(MAKE) db-seed
 	$(MAKE) eval-save
 	$(MAKE) demo
