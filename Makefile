@@ -16,7 +16,8 @@ db-reset:
 	docker compose exec -T postgres psql -U $${POSTGRES_USER} -d $${POSTGRES_DB:-nivoxai} -f /docker-entrypoint-initdb.d/analytics.sql
 
 db-seed:
-	cd backend-api && npm run seed:analytics
+	docker compose up -d backend-api
+	docker exec -i nivoxai-backend-api npm run seed:analytics
 
 test-ai:
 	if [ -t 0 ]; then docker exec -it nivoxai-backend-ai python -m pytest -q; else docker exec -i nivoxai-backend-ai python -m pytest -q; fi

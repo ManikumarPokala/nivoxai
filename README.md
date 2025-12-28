@@ -256,8 +256,7 @@ Metrics:
 curl http://localhost:8000/metrics
 
 Seed analytics demo data:
-cd backend-api
-npm run seed:analytics
+make db-seed
 
 Verification
 
