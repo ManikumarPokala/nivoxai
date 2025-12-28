@@ -63,47 +63,47 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend-ai
-          dockerfile: ./backend-ai/Dockerfile
+          file: ./backend-ai/Dockerfile
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:latest
+            ghcr.io/manikumarpokala/nivoxai-backend-ai:${{ github.sha }}
+            ghcr.io/manikumarpokala/nivoxai-backend-ai:latest
 
       - name: Build and push backend-api (GHCR)
         uses: docker/build-push-action@v6
         with:
           context: ./backend-api
-          dockerfile: ./backend-api/Dockerfile
+          file: ./backend-api/Dockerfile
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:latest
+            ghcr.io/manikumarpokala/nivoxai-backend-api:${{ github.sha }}
+            ghcr.io/manikumarpokala/nivoxai-backend-api:latest
 
       - name: Build and push frontend (GHCR)
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          dockerfile: ./frontend/Dockerfile
+          file: ./frontend/Dockerfile
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:latest
+            ghcr.io/manikumarpokala/nivoxai-frontend:${{ github.sha }}
+            ghcr.io/manikumarpokala/nivoxai-frontend:latest
 
       - name: Print pushed images
         run: |
-          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:${{ github.sha }}"
-          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-frontend:latest"
-          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:${{ github.sha }}"
-          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-api:latest"
-          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:${{ github.sha }}"
-          echo "ghcr.io/${{ github.repository_owner }}/nivoxai-backend-ai:latest"
+          echo "ghcr.io/manikumarpokala/nivoxai-frontend:${{ github.sha }}"
+          echo "ghcr.io/manikumarpokala/nivoxai-frontend:latest"
+          echo "ghcr.io/manikumarpokala/nivoxai-backend-api:${{ github.sha }}"
+          echo "ghcr.io/manikumarpokala/nivoxai-backend-api:latest"
+          echo "ghcr.io/manikumarpokala/nivoxai-backend-ai:${{ github.sha }}"
+          echo "ghcr.io/manikumarpokala/nivoxai-backend-ai:latest"
