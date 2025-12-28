@@ -11,20 +11,21 @@ export default function QAAdminPage() {
   const { t } = useI18n();
   const [demoKey, setDemoKey] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; status?: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const runAdminPing = async () => {
     setError(null);
+    setResult(null);
     const response = await requestJson<{ status?: string }>("/api/admin/ping", {
       headers: demoKey ? { "x-demo-admin-key": demoKey } : undefined,
     });
     if (response.error) {
-      setError(response.error);
-      setResult(null);
+      const statusLabel = response.status ? ` (${response.status})` : "";
+      setError(`${response.error}${statusLabel}`);
       return;
     }
-    setResult(response.data?.status ?? "ok");
+    setResult({ ok: true, status: response.status });
   };
 
   return (
@@ -78,9 +79,10 @@ export default function QAAdminPage() {
             </span>
           </Button>
           {result ? (
-            <p className="text-xs text-emerald-600">
-              {t("admin_guardrails_status_label")}: {result}
-            </p>
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+              {t("status_pass")}
+              {typeof result.status === "number" ? ` (${result.status})` : ""}
+            </span>
           ) : null}
           {error ? <p className="text-xs text-rose-600">{error}</p> : null}
         </CardBody>

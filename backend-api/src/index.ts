@@ -571,6 +571,7 @@ app.use((req: RequestContext, res: Response, next) => {
 app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(/^\/admin/, enforceDemoAdminKey);
+app.use("/admin", authenticate);
 
 app.post("/auth/login", enforceDemoRateLimit, enforceDemoPayloadCap, async (req: Request, res: Response) => {
   const { email, password, tenant_id } = req.body as {

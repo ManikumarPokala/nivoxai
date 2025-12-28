@@ -73,6 +73,8 @@ services:
       DEMO_USER_B_NAME: Tenant B User
       DEMO_USER_B_ROLE: brand_user
       DEMO_USER_PASSWORD: demo
+      DEMO_MODE: "true"
+      DEMO_ADMIN_KEY: DEMO_ONLY_READ_ACCESS_2025
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: nivoxai

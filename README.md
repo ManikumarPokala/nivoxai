@@ -18,6 +18,12 @@ Deployed demo (placeholder): https://<your-demo-url>
 
 Used only for protected demo admin actions (guardrails). Never use in production.
 
+## Admin Guardrails (how to verify)
+- Go to `/qa/admin`
+- Paste the demo key into the input
+- Click “Verify admin access”
+- The UI sends `GET /api/admin/ping` with header `x-demo-admin-key: <key>`
+
 ## JD-aligned highlights
 - Recommendation/ranking + explainability
 - Agentic AI with tools + safety + fallbacks + trace
