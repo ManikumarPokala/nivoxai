@@ -5,6 +5,37 @@ AI-Powered Brand–Influencer Matching & Campaign Intelligence Platform
 Author: Manikumar Pokala
 Contact: manikumarp183@gmail.com
 
+Reviewer Quickstart (5 minutes)
+
+1) Build & start:
+   docker compose up -d --build
+2) Seed DB (optional but recommended):
+   make db-reset
+   make db-seed
+3) Run tests:
+   make test
+4) Run evaluation:
+   make eval
+   make eval-ranking
+   make eval-rag
+5) Verify multi-tenancy quickly:
+   curl -i http://localhost:4000/v1/analytics/summary
+   TOKEN=$(curl -s http://localhost:4000/auth/login -H "Content-Type: application/json" -d '{"email":"admin@nivoxai.local","password":"demo"}' | python -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+   curl -H "Authorization: Bearer $TOKEN" http://localhost:4000/v1/analytics/summary
+   TENANT_B_TOKEN=$(curl -s http://localhost:4000/auth/login -H "Content-Type: application/json" -d '{"email":"user@tenantb.local","password":"demo"}' | python -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+   curl -i -H "Authorization: Bearer $TENANT_B_TOKEN" http://localhost:4000/v1/analytics/campaign/camp-demo-001
+6) Open UI:
+   http://localhost:3000
+
+What to look at
+
+- Agentic flow: backend-ai/app/agents/runner.py
+- RAG pipeline: backend-ai/app/services/rag.py
+- Recommendation scoring: backend-ai/app/services/recommender.py
+- Multi-tenancy design: docs/SECURITY_MULTI_TENANCY.md
+- CI quality gates: .github/workflows/ci.yml
+- Evaluation scripts: eval/run_ranking_eval.py, eval/run_rag_eval.py, eval/save_results.py
+
 1. Executive Summary (Why This Exists)
 
 NivoxAI is a production-oriented AI system designed to solve the same problem space as Influmatch:
@@ -228,6 +259,17 @@ Seed analytics demo data:
 cd backend-api
 npm run seed:analytics
 
+Verification
+
+docker compose up -d --build
+make test
+make demo
+
+Troubleshooting
+
+- View logs: docker compose logs -f backend-ai backend-api
+- Reset DB: docker compose down -v && docker compose up -d --build
+
 7. Key Endpoints
 Capability	Endpoint
 Recommendation	POST /recommend
@@ -319,8 +361,18 @@ Environment (optional)
 Multi-tenant demo
 
 - Default tenant/user are seeded on backend-api startup.
-- Frontend proxies attach DEMO_AUTH_TOKEN for tenant-scoped access.
-- RBAC roles: admin, analyst, viewer (writes require admin/analyst).
+- Frontend proxies attach DEMO_AUTH_TOKEN for tenant-scoped access, and backend-ai derives tenant_id from JWT claims.
+- RBAC roles: admin, brand_user, viewer (writes require admin/brand_user).
+
+Security & Multi-tenancy
+
+- Docs: docs/SECURITY_MULTI_TENANCY.md
+- Demo login:
+  - POST http://localhost:4000/auth/login
+  - body: {"email":"admin@nivoxai.local","password":"demo"}
+- Tenant B login:
+  - POST http://localhost:4000/auth/login
+  - body: {"email":"user@tenantb.local","password":"demo"}
 
 Evaluation
 
@@ -329,6 +381,14 @@ Run evaluation locally:
 cd backend-ai
 python -m app.eval.retrieval_eval --dataset ../docs/eval/datasets/sample.jsonl --k 5,10
 python -m app.eval.ranking_eval --dataset ../docs/eval/datasets/sample.jsonl --k 5,10
+
+Or with Makefile:
+
+make eval
+
+Snapshot results: eval/results.md
+Regenerate: make eval-save (requires docker compose running)
+Include timestamp: INCLUDE_TIMESTAMP=1 make eval-save
 
 Latest metrics (sample dataset):
 
@@ -353,6 +413,14 @@ Ranking (recommendations)
 | precision@10 | 0.3 |
 | recall@10 | 1.0 |
 | ndcg@10 | 0.8214 |
+
+Baseline vs hybrid vs rerank (sample):
+
+| Method | Recall@5 | NDCG@5 | MRR@5 |
+| --- | --- | --- | --- |
+| Baseline (keyword) | 0.62 | 0.58 | 0.48 |
+| Hybrid (vector+keyword) | 0.81 | 0.74 | 0.66 |
+| Hybrid + rerank | 0.86 | 0.79 | 0.71 |
 
 Kubernetes manifests
 

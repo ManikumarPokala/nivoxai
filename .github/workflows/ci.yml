@@ -51,7 +51,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: backend-api/package-lock.json
 
@@ -110,3 +110,31 @@ jobs:
           else
             echo "No docker-compose.yml found."
           fi
+
+  quality-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: backend-api/package-lock.json
+
+      - name: Install backend-api deps
+        run: |
+          cd backend-api
+          npm ci
+
+      - name: Build backend-ai container
+        run: |
+          docker compose up -d --build backend-ai
+
+      - name: Run backend-api tests
+        run: make test-api
+
+      - name: Run backend-ai tests
+        run: make test-ai

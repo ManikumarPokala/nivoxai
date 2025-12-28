@@ -20,7 +20,8 @@ services:
 
   backend-ai:
     build:
-      context: ./backend-ai
+      context: .
+      dockerfile: backend-ai/Dockerfile
       args:
         GIT_SHA: local-dev
     container_name: nivoxai-backend-ai
@@ -33,6 +34,7 @@ services:
       RAG_VECTOR_WEIGHT: 0.6
       RAG_KEYWORD_WEIGHT: 0.4
       INGESTION_ENABLED: "true"
+      JWT_SECRET: dev-jwt-secret
     ports:
       - "8000:8000"
     healthcheck:
@@ -61,10 +63,16 @@ services:
       CORS_ORIGINS: http://localhost:3000
       JWT_SECRET: dev-jwt-secret
       DEMO_TENANT_ID: 00000000-0000-0000-0000-000000000001
+      DEMO_TENANT_B_ID: 00000000-0000-0000-0000-000000000003
       DEMO_USER_ID: 00000000-0000-0000-0000-000000000002
+      DEMO_USER_B_ID: 00000000-0000-0000-0000-000000000004
       DEMO_USER_EMAIL: admin@nivoxai.local
       DEMO_USER_NAME: Demo Admin
       DEMO_USER_ROLE: admin
+      DEMO_USER_B_EMAIL: user@tenantb.local
+      DEMO_USER_B_NAME: Tenant B User
+      DEMO_USER_B_ROLE: brand_user
+      DEMO_USER_PASSWORD: demo
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: nivoxai

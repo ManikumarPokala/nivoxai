@@ -7,10 +7,12 @@ ENV PYTHONUNBUFFERED=1
 ARG GIT_SHA=dev
 ENV GIT_SHA=$GIT_SHA
 
-RUN pip install --no-cache-dir fastapi uvicorn scikit-learn numpy pandas pydantic
+COPY backend-ai/requirements.txt backend-ai/requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
-COPY app ./app
+COPY backend-ai/app ./app
 COPY eval ./eval
+COPY backend-ai/tests ./tests
 
 EXPOSE 8000
 
