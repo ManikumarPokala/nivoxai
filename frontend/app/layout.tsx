@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Sora } from "next/font/google";
 import AppShell from "@/components/AppShell";
 import { I18nProvider } from "@/lib/i18n";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const sora = Sora({
   subsets: ["latin"],
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en">
       <body className={`${sora.variable} text-slate-900 antialiased`}>
         <I18nProvider>
-          <AppShell>{children}</AppShell>
+          <ErrorBoundary>
+            <AppShell>{children}</AppShell>
+          </ErrorBoundary>
         </I18nProvider>
       </body>
     </html>

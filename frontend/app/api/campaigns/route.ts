@@ -1,74 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE_URL } from "@/lib/urls";
-import { createCampaign, listCampaigns } from "./store";
+import { buildAuthHeaders, requireSession } from "../_utils/session";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { session, error } = await requireSession();
+  if (error || !session) {
+    return error;
+  }
   try {
-    const headers: HeadersInit = {};
-    if (process.env.DEMO_AUTH_TOKEN) {
-      headers.Authorization = `Bearer ${process.env.DEMO_AUTH_TOKEN}`;
-    }
+    const headers = buildAuthHeaders(session);
     const response = await fetch(`${BACKEND_API_BASE_URL}/v1/campaigns`, {
       headers,
       cache: "no-store",
     });
-    if (response.ok) {
-      const data = await response.json();
-      return NextResponse.json(data, { status: response.status });
-    }
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    // fall through to demo data
+    return NextResponse.json(
+      { error: "Campaigns proxy failed." },
+      { status: 502 }
+    );
   }
-
-  return NextResponse.json(listCampaigns());
 }
 
 export async function POST(request: NextRequest) {
-  let body: unknown = null;
+  const { session, error } = await requireSession();
+  if (error || !session) {
+    return error;
+  }
   try {
-    body = await request.json();
-    const headers: HeadersInit = { "Content-Type": "application/json" };
-    if (process.env.DEMO_AUTH_TOKEN) {
-      headers.Authorization = `Bearer ${process.env.DEMO_AUTH_TOKEN}`;
-    }
+    const body = await request.json();
+    const headers = buildAuthHeaders(session, { "Content-Type": "application/json" });
     const response = await fetch(`${BACKEND_API_BASE_URL}/v1/campaigns`, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      return NextResponse.json(data, { status: response.status });
-    }
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    // fall through to local demo store
-  }
-
-  if (!bodyIsCampaignCreate(body)) {
     return NextResponse.json(
-      { error: "Invalid campaign payload." },
-      { status: 400 }
+      { error: "Campaign create proxy failed." },
+      { status: 502 }
     );
   }
-
-  const created = createCampaign(body);
-  return NextResponse.json(created, { status: 201 });
-}
-
-function bodyIsCampaignCreate(body: unknown): body is {
-  title: string;
-  country: string;
-  budget: number;
-} {
-  if (!body || typeof body !== "object") {
-    return false;
-  }
-
-  const candidate = body as { title?: unknown; country?: unknown; budget?: unknown };
-  return (
-    typeof candidate.title === "string" &&
-    typeof candidate.country === "string" &&
-    typeof candidate.budget === "number"
-  );
 }

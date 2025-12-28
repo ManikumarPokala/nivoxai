@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
@@ -14,6 +15,9 @@ import {
 } from "@/lib/api";
 import { logAnalyticsEvent } from "@/lib/analytics";
 import { useI18n } from "@/lib/i18n";
+import { getAuthToken, getStoredTenantId, getTokenRole, subscribeAuth } from "@/lib/auth";
+import { recordActivity } from "@/lib/activity";
+import { pushToast } from "@/lib/toast";
 
 const statusMap: Record<string, "success" | "warning" | "info"> = {
   Active: "success",
@@ -23,14 +27,15 @@ const statusMap: Record<string, "success" | "warning" | "info"> = {
 
 export default function CampaignsPage() {
   const { t } = useI18n();
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [campaigns, setCampaigns] = useState<CampaignInput[]>([]);
-  const [statusById, setStatusById] = useState<Record<string, string>>({
-    "camp-demo-001": "Active",
-    "camp-demo-002": "Active",
-    "camp-demo-003": "Draft",
-  });
+  const [role, setRole] = useState<string | null>(getTokenRole());
+  const [sessionActive, setSessionActive] = useState<boolean>(
+    Boolean(getAuthToken() && getStoredTenantId())
+  );
+  const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +58,16 @@ export default function CampaignsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const unsub = subscribeAuth(() => {
+      setRole(getTokenRole());
+      setSessionActive(Boolean(getAuthToken() && getStoredTenantId()));
+    });
+    return () => {
+      unsub();
+    };
+  }, []);
+
   const filteredCampaigns = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) {
@@ -71,25 +86,73 @@ export default function CampaignsPage() {
     country: string;
     budget: number;
   }) {
+    if (role === "viewer") {
+      pushToast({
+        title: "Permission denied",
+        description: "Viewer role cannot create campaigns.",
+        variant: "error",
+      });
+      return;
+    }
     const result = await createCampaign(formData);
     if (result.data) {
       const created = normalizeCampaignItem(result.data);
-      if (created.id) {
-        setCampaigns((prev) => [created, ...prev]);
-        setStatusById((prev) => ({ ...prev, [created.id]: "Draft" }));
-        void logAnalyticsEvent({
-          event_type: "campaign_created",
-          campaign_id: created.id,
-          metadata: {
-            goal: created.goal,
-            region: created.target_region,
-          },
-        });
+      if (!created) {
+        setError("Campaign response invalid.");
+        return;
       }
+      setCampaigns((prev) => [created, ...prev]);
+      recordActivity({
+        title: "Campaign created",
+        detail: `${created.brand_name} • ${created.goal}`,
+        campaignId: created.id,
+      });
+      void logAnalyticsEvent({
+        event_type: "campaign_created",
+        campaign_id: created.id,
+        metadata: {
+          goal: created.goal,
+          region: created.target_region,
+        },
+      });
+      pushToast({
+        title: "Campaign created",
+        description: created.brand_name,
+        variant: "success",
+      });
       setIsModalOpen(false);
       return;
     }
     setError(result.error ?? "Failed to create campaign.");
+  }
+
+  async function handleCreateDemoCampaign() {
+    setIsBootstrapping(true);
+    setError(null);
+    const result = await createCampaign({
+      title: "Demo Campaign",
+      country: "Thailand",
+      budget: 12000,
+    });
+    if (result.error) {
+      setError(result.error);
+      setIsBootstrapping(false);
+      return;
+    }
+    const created = result.data ? normalizeCampaignItem(result.data) : null;
+    if (created) {
+      setCampaigns((prev) => [created, ...prev]);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("nivoxai_last_campaign", created.id);
+      }
+      router.push(`/campaigns/${created.id}`);
+    } else {
+      const refreshed = await getCampaigns();
+      if (refreshed.data) {
+        setCampaigns(normalizeCampaignList(refreshed.data));
+      }
+    }
+    setIsBootstrapping(false);
   }
 
   return (
@@ -114,7 +177,7 @@ export default function CampaignsPage() {
               placeholder="Search campaigns, goals, regions"
               className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-slate-400 sm:w-64"
             />
-            <Button onClick={() => setIsModalOpen(true)}>
+            <Button onClick={() => setIsModalOpen(true)} disabled={role === "viewer"}>
               {t("action_create_campaign")}
             </Button>
           </div>
@@ -126,19 +189,22 @@ export default function CampaignsPage() {
               <div className="h-16 rounded-2xl bg-slate-100" />
               <div className="h-16 rounded-2xl bg-slate-100" />
             </div>
-          ) : filteredCampaigns.length === 0 ? (
-            <EmptyState
-              title={t("empty_campaigns_title")}
-              description={t("empty_campaigns_desc")}
-              action={
-                <Button onClick={() => setIsModalOpen(true)}>
-                  {t("action_create_campaign")}
-                </Button>
-              }
-            />
-          ) : (
-            <Table>
-              <TableHead>
+      ) : filteredCampaigns.length === 0 ? (
+        <EmptyState
+          title="No campaigns for this workspace"
+          description="Create a demo campaign to start recommendations and strategy runs."
+          action={
+            <Button
+              onClick={handleCreateDemoCampaign}
+              disabled={!sessionActive || role === "viewer" || isBootstrapping}
+            >
+              {isBootstrapping ? "Creating..." : "Create demo campaign"}
+            </Button>
+          }
+        />
+      ) : (
+        <Table>
+          <TableHead>
                 <tr>
                   <th className="px-4 py-3">Campaign Name</th>
                   <th className="px-4 py-3">Goal</th>
@@ -149,12 +215,12 @@ export default function CampaignsPage() {
                   <th className="px-4 py-3">Action</th>
                 </tr>
               </TableHead>
-              <TableBody>
-                {filteredCampaigns.map((campaign) => (
-                  <TableRow key={campaign.id} className="even:bg-slate-50/60">
-                    <TableCell className="font-semibold text-slate-900">
-                      {campaign.brand_name}
-                    </TableCell>
+            <TableBody>
+              {filteredCampaigns.map((campaign) => (
+                <TableRow key={campaign.id} className="even:bg-slate-50/60">
+                  <TableCell className="font-semibold text-slate-900">
+                    {campaign.brand_name}
+                  </TableCell>
                     <TableCell className="text-slate-600">
                       {campaign.goal}
                     </TableCell>
@@ -162,25 +228,41 @@ export default function CampaignsPage() {
                     <TableCell>{campaign.target_age_range}</TableCell>
                     <TableCell>${campaign.budget.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge variant={statusMap[statusById[campaign.id] ?? "Active"]}>
-                        {statusById[campaign.id] ?? "Active"}
+                      <Badge variant={statusMap["Active"]}>
+                        Active
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                  <TableCell>
+                    {sessionActive && campaign.id && !campaign.id.startsWith("camp-demo-") ? (
                       <Link
                         href={`/campaigns/${campaign.id}`}
+                        onClick={() => {
+                          if (typeof window !== "undefined") {
+                            window.localStorage.setItem("nivoxai_last_campaign", campaign.id);
+                          }
+                        }}
                         className="text-sm font-semibold text-slate-700 hover:text-slate-900"
                       >
                         View
                       </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+                    ) : (
+                      <span className="text-sm font-semibold text-slate-400">
+                        View
+                      </span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
             </Table>
           )}
           {error ? (
             <p className="mt-3 text-xs text-rose-600">{error}</p>
+          ) : null}
+          {!sessionActive ? (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+              Session missing. Paste JWT + tenant id in Settings to load campaigns.
+            </div>
           ) : null}
         </CardBody>
       </Card>
@@ -206,32 +288,62 @@ export default function CampaignsPage() {
   );
 }
 
-type CampaignItemPayload = CampaignInput | { campaign?: CampaignInput };
-type CampaignListPayload = CampaignInput[] | { campaigns?: CampaignInput[] };
+type CampaignApiPayload = Partial<CampaignInput> & {
+  id?: string;
+  campaign_id?: string;
+  title?: string;
+  country?: string;
+};
+type CampaignItemPayload = CampaignApiPayload | { campaign?: CampaignApiPayload | null };
+type CampaignListPayload =
+  | CampaignItemPayload[]
+  | { campaigns?: CampaignItemPayload[] };
 
-function normalizeCampaignItem(payload: CampaignItemPayload): CampaignInput {
-  if ("campaign" in payload && payload.campaign) {
-    return payload.campaign;
+function isCampaignWrapper(
+  value: unknown
+): value is { campaign?: CampaignApiPayload | null } {
+  return typeof value === "object" && value !== null && "campaign" in value;
+}
+
+function unwrapCampaign(payload: CampaignItemPayload): CampaignApiPayload | null {
+  if (isCampaignWrapper(payload)) {
+    return payload.campaign ?? null;
   }
-  if (isCampaignInput(payload)) {
-    return payload;
+  return payload;
+}
+
+function normalizeCampaignItem(payload: CampaignItemPayload): CampaignInput | null {
+  const base = unwrapCampaign(payload);
+  if (!base) {
+    return null;
+  }
+  if (isCampaignInput(base)) {
+    return base;
+  }
+  const id = base.id ?? base.campaign_id;
+  if (!id) {
+    return null;
   }
   return {
-    id: "camp-unknown",
-    brand_name: "Unknown Campaign",
-    goal: "Unknown goal",
-    target_region: "Unknown region",
-    target_age_range: "Unknown",
-    budget: 0,
-    description: "Campaign details unavailable.",
+    id,
+    brand_name: base.brand_name ?? base.title ?? "Campaign",
+    goal: base.goal ?? "New campaign launch",
+    target_region: base.target_region ?? base.country ?? "Global",
+    target_age_range: base.target_age_range ?? "18-34",
+    budget: typeof base.budget === "number" ? base.budget : 0,
+    description: base.description ?? "Campaign brief pending.",
   };
 }
 
 function normalizeCampaignList(payload: CampaignListPayload): CampaignInput[] {
   if (Array.isArray(payload)) {
-    return payload;
+    return payload
+      .map((item) => normalizeCampaignItem(item))
+      .filter((item): item is CampaignInput => Boolean(item));
   }
-  return payload.campaigns ?? [];
+  return (payload.campaigns ?? [])
+    .map((item) => normalizeCampaignItem(item))
+    .filter((item): item is CampaignInput => Boolean(item));
 }
 
 function isCampaignInput(payload: CampaignItemPayload): payload is CampaignInput {

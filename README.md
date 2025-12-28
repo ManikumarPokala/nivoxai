@@ -27,6 +27,14 @@ Reviewer Quickstart (5 minutes)
 6) Open UI:
    http://localhost:3000
 
+UI Auth & Diagnostics
+
+- Paste JWT and tenant_id in Settings → "Auth / Session" (stored as `nivoxai_jwt` and `nivoxai_tenant_id`).
+- `make demo` prints DEMO_ADMIN_JWT + DEMO_TENANT_ID for copy/paste into Settings.
+- Session cookie verification: `scripts/verify-session.sh` (requires frontend running on :3000).
+- Diagnostics drawer shows last 20 requests with request IDs and status codes.
+- If you see 401/403, confirm the token role and tenant in Settings.
+
 What to look at
 
 - Agentic flow: backend-ai/app/agents/runner.py
@@ -268,6 +276,7 @@ Troubleshooting
 
 - View logs: docker compose logs -f backend-ai backend-api
 - Reset DB: docker compose down -v && docker compose up -d --build
+- Release checklist: docs/RELEASE_CHECKLIST.md
 
 7. Key Endpoints
 Capability	Endpoint

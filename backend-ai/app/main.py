@@ -81,6 +81,7 @@ def _decode_jwt(token: str) -> dict:
 
 
 def require_tenant(request: Request) -> str:
+    # Tenant is resolved from JWT claims (tenant_id) in Authorization header.
     auth_header = request.headers.get("authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing tenant context.")

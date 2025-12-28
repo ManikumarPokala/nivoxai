@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE_URL } from "@/lib/urls";
+import { buildAuthHeaders, requireSession } from "../_utils/session";
 
 export async function POST(request: NextRequest) {
+  const { session, error } = await requireSession();
+  if (error || !session) {
+    return error;
+  }
   try {
     const body = await request.json();
-    const headers: HeadersInit = { "Content-Type": "application/json" };
-    if (process.env.DEMO_AUTH_TOKEN) {
-      headers.Authorization = `Bearer ${process.env.DEMO_AUTH_TOKEN}`;
-    }
+    const headers = buildAuthHeaders(session, { "Content-Type": "application/json" });
     const response = await fetch(`${BACKEND_API_BASE_URL}/recommend`, {
       method: "POST",
       headers,

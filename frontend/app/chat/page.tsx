@@ -1,7 +1,12 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { chatStrategy, type RecommendationResponse } from "@/lib/api";
+import { FormEvent, useEffect, useState } from "react";
+import {
+  chatStrategy,
+  getCampaigns,
+  getSampleRecommendation,
+  type CampaignInput,
+} from "@/lib/api";
 import { buildCampaignPayload } from "@/lib/payloads";
 
 export default function StrategyChatPage() {
@@ -11,49 +16,49 @@ export default function StrategyChatPage() {
   const [question, setQuestion] = useState(
     "How should we use the top influencers to launch this in the first 4 weeks?"
   );
+  const [campaigns, setCampaigns] = useState<CampaignInput[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reply, setReply] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getCampaigns().then((result) => {
+      if (!active) {
+        return;
+      }
+      if (result.data) {
+        setCampaigns(result.data);
+        setSelectedId(result.data[0]?.id ?? null);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    // Minimal demo campaign + recommendations object for backend
-    const campaign = {
-      id: "camp-ui-1",
-      brand_name: "Luma Beauty",
-      goal: "Launch vitamin C summer serum",
-      target_region: "Thailand",
-      target_age_range: "18-24",
-      budget: 25000,
-      description: campaignSummary,
-    };
-
-    const recommendations: RecommendationResponse = {
-      campaign_id: "camp-ui-1",
-      recommendations: [
-        {
-          influencer_id: "inf-101",
-          score: 0.94,
-          reasons: ["Strong category match with 'beauty'"],
-        },
-        {
-          influencer_id: "inf-103",
-          score: 0.88,
-          reasons: ["Region and age fit for Thai Gen-Z audience"],
-        },
-      ],
-    };
-
     try {
+      const selected = campaigns.find((item) => item.id === selectedId);
+      if (!selected) {
+        throw new Error("Select a campaign first.");
+      }
+      const sample = await getSampleRecommendation();
+      if (sample.error || !sample.data) {
+        throw new Error(sample.error ?? "Recommendation sample failed.");
+      }
       const payloadCampaign = buildCampaignPayload({
-        ...campaign,
-        title: campaign.brand_name,
-        country: campaign.target_region,
+        ...selected,
+        title: selected.brand_name,
+        country: selected.target_region,
+        description: campaignSummary,
       });
-      const result = await chatStrategy(payloadCampaign, recommendations, question);
+      const result = await chatStrategy(payloadCampaign, sample.data, question);
       if (result.error || !result.data) {
         throw new Error(result.error ?? "Strategy request failed");
       }
@@ -107,6 +112,27 @@ export default function StrategyChatPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-600">
+                Campaign
+              </label>
+              <select
+                value={selectedId ?? ""}
+                onChange={(event) => setSelectedId(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+              >
+                {campaigns.length ? (
+                  campaigns.map((campaign) => (
+                    <option key={campaign.id} value={campaign.id}>
+                      {campaign.brand_name} • {campaign.target_region}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No campaigns available</option>
+                )}
+              </select>
+            </div>
+
             <div>
               <label className="block text-xs font-medium text-slate-600">
                 Campaign summary

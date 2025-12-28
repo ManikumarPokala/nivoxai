@@ -1,10 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "./ui/utils";
 import { useI18n } from "@/lib/i18n";
+import DiagnosticsDrawer from "@/components/DiagnosticsDrawer";
+import ToastViewport from "@/components/ui/ToastViewport";
+import {
+  bootstrapDemoSession,
+  getStoredTenantId,
+  subscribeAuth,
+  syncSessionFromCookies,
+} from "@/lib/auth";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -13,6 +21,13 @@ type AppShellProps = {
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [lastCampaignId, setLastCampaignId] = useState<string | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<"ready" | "missing" | "bootstrapping">(
+    "bootstrapping"
+  );
+  const [sessionTenant, setSessionTenant] = useState<string | null>(getStoredTenantId());
+  const [sessionRole, setSessionRole] = useState<string | null>(null);
   const { locale, setLocale, t } = useI18n();
   const gitSha = process.env.NEXT_PUBLIC_GIT_SHA ?? "dev";
 
@@ -43,6 +58,54 @@ export default function AppShell({ children }: AppShellProps) {
 
     return titleMap[pathname] ?? "NivoxAI";
   }, [pathname, t]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    setLastCampaignId(window.localStorage.getItem("nivoxai_last_campaign"));
+  }, []);
+
+  async function ensureSession() {
+    setSessionStatus("bootstrapping");
+    const existing = await syncSessionFromCookies();
+    if (existing?.tenant_id) {
+      setSessionTenant(existing.tenant_id);
+      setSessionRole(existing.role ?? null);
+      setSessionStatus("ready");
+      return;
+    }
+    const demo = await bootstrapDemoSession();
+    if (demo?.tenant_id) {
+      setSessionTenant(demo.tenant_id);
+      setSessionRole(demo.role ?? null);
+      setSessionStatus("ready");
+      return;
+    }
+    setSessionStatus("missing");
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    void ensureSession();
+  }, []);
+
+  useEffect(() => {
+    const unsub = subscribeAuth(() => {
+      const tenantId = getStoredTenantId();
+      setSessionTenant(tenantId);
+      setSessionStatus(tenantId ? "ready" : "missing");
+    });
+    return () => {
+      unsub();
+    };
+  }, []);
+
+  const strategyHref = lastCampaignId
+    ? `/campaigns/${lastCampaignId}?tab=strategy`
+    : "/campaigns";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-[#f7f6f2] to-slate-100 text-slate-900">
@@ -121,6 +184,30 @@ export default function AppShell({ children }: AppShellProps) {
               </div>
 
               <div className="hidden items-center gap-3 lg:flex">
+                {sessionStatus === "ready" ? (
+                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    Session Active • {sessionTenant ?? "tenant"} • {sessionRole ?? "role"}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={ensureSession}
+                    className="inline-flex items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700"
+                  >
+                    Start Demo Session
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await fetch("/api/session", { method: "DELETE" });
+                    setSessionStatus("missing");
+                    void ensureSession();
+                  }}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600"
+                >
+                  Reset Session
+                </button>
                 <Link
                   href="/campaigns"
                   className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
@@ -134,11 +221,18 @@ export default function AppShell({ children }: AppShellProps) {
                   {t("action_discover")}
                 </Link>
                 <Link
-                  href="/campaigns/camp-demo-001"
+                  href={strategyHref}
                   className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
                   {t("action_generate_strategy")}
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowDiagnostics(true)}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600"
+                >
+                  Diagnostics
+                </button>
                 <select
                   value={locale}
                   onChange={(event) => setLocale(event.target.value as typeof locale)}
@@ -153,6 +247,13 @@ export default function AppShell({ children }: AppShellProps) {
           </header>
 
           <main className="page-enter px-4 py-6 lg:px-10 lg:py-10">
+            {sessionStatus !== "ready" ? (
+              <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                {sessionStatus === "bootstrapping"
+                  ? "Initializing demo session..."
+                  : "Session missing. If using HTTP, secure cookies may be blocked. Click Start Demo Session."}
+              </div>
+            ) : null}
             {children}
           </main>
           <footer className="border-t border-slate-200/70 bg-white/80 px-4 py-3 text-xs text-slate-500 lg:px-10">
@@ -169,6 +270,9 @@ export default function AppShell({ children }: AppShellProps) {
           aria-label="Close navigation overlay"
         />
       ) : null}
+
+      <DiagnosticsDrawer open={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
+      <ToastViewport />
     </div>
   );
 }

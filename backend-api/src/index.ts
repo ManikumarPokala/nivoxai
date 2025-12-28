@@ -358,6 +358,7 @@ const getAuth = (req: Request): AuthContext => {
   return auth;
 };
 
+// Tenant is resolved from JWT claims (tenant_id); query override allowed for admin only.
 const getTenantScope = (req: Request): string => {
   const auth = getAuth(req);
   const override = typeof req.query.tenant_id === "string" ? req.query.tenant_id : null;
@@ -490,6 +491,9 @@ app.post("/recommend", async (req: Request, res: Response) => {
     if (req.headers.authorization) {
       headers.Authorization = req.headers.authorization;
     }
+    if (req.headers["x-tenant-id"]) {
+      headers["X-Tenant-Id"] = String(req.headers["x-tenant-id"]);
+    }
     const response = await axios.post<RecommendationResponsePayload>(
       `${AI_SERVICE_URL}/recommend`,
       req.body,
@@ -559,6 +563,9 @@ app.post("/rag/influencers", async (req: Request, res: Response) => {
     if (req.headers.authorization) {
       headers.Authorization = req.headers.authorization;
     }
+    if (req.headers["x-tenant-id"]) {
+      headers["X-Tenant-Id"] = String(req.headers["x-tenant-id"]);
+    }
     const response = await axios.post(
       `${AI_SERVICE_URL}/rag/influencers`,
       { query, top_k },
@@ -588,6 +595,9 @@ app.post("/chat", async (req: Request, res: Response) => {
     const headers: Record<string, string> = {};
     if (req.headers.authorization) {
       headers.Authorization = req.headers.authorization;
+    }
+    if (req.headers["x-tenant-id"]) {
+      headers["X-Tenant-Id"] = String(req.headers["x-tenant-id"]);
     }
     const response = await axios.post(
       `${AI_SERVICE_URL}/chat-strategy`,

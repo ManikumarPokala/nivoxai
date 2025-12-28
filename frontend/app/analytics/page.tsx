@@ -11,6 +11,7 @@ export default function AnalyticsPage() {
   const { t } = useI18n();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -20,11 +21,19 @@ export default function AnalyticsPage() {
       }
       setSummary(result.data);
       setError(result.error);
+      setLastUpdated(new Date().toLocaleTimeString());
     });
     return () => {
       active = false;
     };
   }, []);
+
+  async function refresh() {
+    const result = await getAnalyticsSummary();
+    setSummary(result.data);
+    setError(result.error);
+    setLastUpdated(new Date().toLocaleTimeString());
+  }
 
   return (
     <div className="space-y-6">
@@ -37,6 +46,16 @@ export default function AnalyticsPage() {
           <p className="text-sm text-slate-500">
             Aggregated KPIs from the backend API analytics service.
           </p>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+            <span>Last updated: {lastUpdated ?? "—"}</span>
+            <button
+              type="button"
+              onClick={refresh}
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600"
+            >
+              Refresh
+            </button>
+          </div>
         </CardHeader>
       </Card>
 

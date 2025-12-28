@@ -37,6 +37,7 @@ help:
 	@echo "make db-seed        # seed analytics"
 	@echo "make demo           # run demo"
 	@echo "make check-onboard  # guidance only"
+	@echo "Do not paste Makefile lines into zsh; run: make <target>"
 
 check-shell-mistake:
 	@echo "Do NOT paste Makefile lines into zsh."

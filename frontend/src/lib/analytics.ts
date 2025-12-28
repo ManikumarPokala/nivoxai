@@ -21,6 +21,8 @@ export type CampaignAnalytics = {
   lastUpdatedAt: string;
 };
 
+import { requestJson, type ApiResult } from "@/lib/apiClient";
+
 export type AnalyticsEventPayload = {
   user_id?: string;
   tenant_id?: string;
@@ -30,66 +32,22 @@ export type AnalyticsEventPayload = {
   metadata?: Record<string, unknown>;
 };
 
-type ApiResult<T> = {
-  data: T | null;
-  error: string | null;
-};
-
-async function handleJsonResponse<T>(response: Response): Promise<ApiResult<T>> {
-  if (!response.ok) {
-    return {
-      data: null,
-      error: `Request failed (${response.status} ${response.statusText})`,
-    };
-  }
-
-  try {
-    const data = (await response.json()) as T;
-    return { data, error: null };
-  } catch {
-    return { data: null, error: "Failed to parse response JSON" };
-  }
-}
-
 export async function getAnalyticsSummary(): Promise<ApiResult<AnalyticsSummary>> {
-  try {
-    // Avoid caching so dashboards stay fresh in SSR and client transitions.
-    const response = await fetch(`/api/analytics/summary`, {
-      cache: "no-store",
-    });
-    return await handleJsonResponse<AnalyticsSummary>(response);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Request failed";
-    return { data: null, error: message };
-  }
+  return requestJson<AnalyticsSummary>(`/api/analytics/summary`);
 }
 
 export async function getCampaignAnalytics(
   campaignId: string
 ): Promise<ApiResult<CampaignAnalytics>> {
-  try {
-    const response = await fetch(`/api/analytics/campaign/${campaignId}`, {
-      cache: "no-store",
-    });
-    return await handleJsonResponse<CampaignAnalytics>(response);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Request failed";
-    return { data: null, error: message };
-  }
+  return requestJson<CampaignAnalytics>(`/api/analytics/campaign/${campaignId}`);
 }
 
 export async function logAnalyticsEvent(
   payload: AnalyticsEventPayload
 ): Promise<ApiResult<{ status: string }>> {
-  try {
-    const response = await fetch(`/api/analytics/event`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return await handleJsonResponse<{ status: string }>(response);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Request failed";
-    return { data: null, error: message };
-  }
+  return requestJson<{ status: string }>(`/api/analytics/event`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }

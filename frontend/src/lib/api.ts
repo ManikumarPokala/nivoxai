@@ -69,88 +69,42 @@ export type RagResponse = {
   results: RagResult[];
 };
 
-export type ApiResult<T> = {
-  data: T | null;
-  error: string | null;
-};
+import { requestJson, type ApiResult } from "@/lib/apiClient";
 
 export type CampaignPayload = CampaignInput & {
   title: string;
 };
 
-const DEFAULT_TIMEOUT_MS = 8000;
-
-async function fetchJson<T>(
-  url: string,
-  options?: RequestInit,
-  timeoutMs: number = DEFAULT_TIMEOUT_MS
-): Promise<ApiResult<T>> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      cache: "no-store",
-    });
-    const requestId = response.headers.get("x-request-id");
-
-    if (!response.ok) {
-      console.error("API request failed", {
-        url,
-        requestId: requestId ?? undefined,
-        status: response.status,
-        payload: options?.body,
-      });
-      return {
-        data: null,
-        error: `Request failed (${response.status} ${response.statusText})${
-          requestId ? ` • Request ID: ${requestId}` : ""
-        }`,
-      };
-    }
-
-    const data = (await response.json()) as T;
-    return { data, error: null };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Request failed";
-    return { data: null, error: message };
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 export async function getHealthAI(): Promise<ApiResult<{ status: string }>> {
-  return fetchJson<{ status: string }>(`/api/healthz`);
+  return requestJson<{ status: string }>(`/api/healthz`);
 }
 
 export async function getHealthAPI(): Promise<ApiResult<{ status: string }>> {
-  return fetchJson<{ status: string }>(`/api/health`);
+  return requestJson<{ status: string }>(`/api/health`);
 }
 
 export async function getModelStatus(): Promise<ApiResult<ModelStatus>> {
-  return fetchJson<ModelStatus>(`/api/model/status`);
+  return requestJson<ModelStatus>(`/api/model/status`);
 }
 
 export async function getAgentStatus(): Promise<ApiResult<AgentStatus>> {
-  return fetchJson<AgentStatus>(`/api/ai/agent-status`);
+  return requestJson<AgentStatus>(`/api/ai/agent-status`);
 }
 
 export async function getSampleRecommendation(): Promise<
   ApiResult<RecommendationResponse>
 > {
-  return fetchJson<RecommendationResponse>(`/api/ai/sample-recommendation`);
+  return requestJson<RecommendationResponse>(`/api/ai/sample-recommendation`);
 }
 
 export async function getCampaigns(): Promise<ApiResult<CampaignInput[]>> {
-  return fetchJson<CampaignInput[]>(`/api/campaigns`);
+  return requestJson<CampaignInput[]>(`/api/campaigns`);
 }
 
 export async function getCampaignById(
   campaignId: string
 ): Promise<ApiResult<CampaignInput>> {
-  return fetchJson<CampaignInput>(`/api/campaigns/${campaignId}`);
+  return requestJson<CampaignInput>(`/api/campaigns/${campaignId}`);
 }
 
 export async function createCampaign(input: {
@@ -158,7 +112,7 @@ export async function createCampaign(input: {
   country: string;
   budget: number;
 }): Promise<ApiResult<CampaignInput>> {
-  return fetchJson<CampaignInput>(`/api/campaigns`, {
+  return requestJson<CampaignInput>(`/api/campaigns`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -169,7 +123,7 @@ export async function recommend(
   campaign: CampaignPayload,
   influencers: InfluencerInput[]
 ): Promise<ApiResult<RecommendationResponse>> {
-  return fetchJson<RecommendationResponse>(`/api/ai/recommend`, {
+  return requestJson<RecommendationResponse>(`/api/ai/recommend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ campaign, influencers }),
@@ -181,7 +135,7 @@ export async function chatStrategy(
   recommendations: RecommendationResponse,
   question?: string | null
 ): Promise<ApiResult<ChatStrategyResponse>> {
-  return fetchJson<ChatStrategyResponse>(`/api/ai/chat-strategy`, {
+  return requestJson<ChatStrategyResponse>(`/api/ai/chat-strategy`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ campaign, recommendations, question }),
@@ -192,9 +146,23 @@ export async function ragInfluencers(
   query: string,
   topK: number
 ): Promise<ApiResult<RagResponse>> {
-  return fetchJson<RagResponse>(`/api/rag`, {
+  return requestJson<RagResponse>(`/api/rag`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, top_k: topK }),
   });
+}
+
+export async function loginDemo(
+  email: string,
+  password: string
+): Promise<ApiResult<{ token: string; tenant_id: string; role: string }>> {
+  return requestJson<{ token: string; tenant_id: string; role: string }>(
+    `/api/auth/login`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }
+  );
 }

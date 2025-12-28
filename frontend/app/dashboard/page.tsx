@@ -5,32 +5,25 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { getAnalyticsSummary, type AnalyticsSummary } from "@/lib/analytics";
-import { getHealthAI, getHealthAPI, getModelStatus, type ModelStatus } from "@/lib/api";
-import { demoCampaigns } from "@/lib/demo-data";
+import {
+  getCampaigns,
+  getHealthAI,
+  getHealthAPI,
+  getModelStatus,
+  type ModelStatus,
+} from "@/lib/api";
+import { subscribeActivity, type ActivityItem } from "@/lib/activity";
+import { subscribeAuth } from "@/lib/auth";
+import { pushToast } from "@/lib/toast";
 import { useI18n } from "@/lib/i18n";
-
-const recentActivity = [
-  {
-    title: "Recommendations generated",
-    detail: "Luma Beauty • 12 influencers ranked",
-    time: "2 min ago",
-  },
-  {
-    title: "Strategy draft updated",
-    detail: "Pulse Activewear • Phase 2 launch",
-    time: "48 min ago",
-  },
-  {
-    title: "RAG discovery query",
-    detail: "Southeast Asia skincare creators",
-    time: "3 hours ago",
-  },
-];
 
 export default function DashboardPage() {
   const { t } = useI18n();
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [campaignCount, setCampaignCount] = useState<number | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [strategyHref, setStrategyHref] = useState("/campaigns");
   const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
   const [modelStatusError, setModelStatusError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<string | null>(null);
@@ -49,29 +42,66 @@ export default function DashboardPage() {
       setLastChecked(new Date().toLocaleTimeString());
     };
 
-    getAnalyticsSummary().then((result) => {
-      if (!active) {
-        return;
-      }
-      setAnalytics(result.data);
-      setAnalyticsError(result.error);
-    });
-    void updateModelStatus();
+    const refresh = () => {
+      getAnalyticsSummary().then((result) => {
+        if (!active) {
+          return;
+        }
+        setAnalytics(result.data);
+        setAnalyticsError(result.error);
+      });
+      getCampaigns().then((result) => {
+        if (!active) {
+          return;
+        }
+        if (result.data) {
+          setCampaignCount(result.data.length);
+        } else if (result.error) {
+          pushToast({
+            title: "Campaigns unavailable",
+            description: result.error,
+            variant: "error",
+          });
+        }
+      });
+      void updateModelStatus();
+      getHealthAI().then((result) => {
+        if (active) {
+          setAiHealth(Boolean(result.data));
+        }
+      });
+      getHealthAPI().then((result) => {
+        if (active) {
+          setApiHealth(Boolean(result.data));
+        }
+      });
+    };
+
+    refresh();
+    const unsubscribe = subscribeAuth(refresh);
     const interval = setInterval(updateModelStatus, 30_000);
-    getHealthAI().then((result) => {
-      if (active) {
-        setAiHealth(Boolean(result.data));
-      }
-    });
-    getHealthAPI().then((result) => {
-      if (active) {
-        setApiHealth(Boolean(result.data));
-      }
-    });
     return () => {
       active = false;
       clearInterval(interval);
+      unsubscribe();
     };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeActivity(setActivity);
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const last = window.localStorage.getItem("nivoxai_last_campaign");
+    if (last) {
+      setStrategyHref(`/campaigns/${last}?tab=strategy`);
+    }
   }, []);
 
   const modelStatusLabel = modelStatus?.status ?? "offline";
@@ -91,7 +121,7 @@ export default function DashboardPage() {
               Active Campaigns
             </p>
             <h2 className="text-2xl font-semibold text-slate-900">
-              {demoCampaigns.length}
+              {campaignCount ?? "—"}
             </h2>
           </CardHeader>
           <CardBody className="text-sm text-slate-500">
@@ -193,22 +223,28 @@ export default function DashboardPage() {
             </h3>
           </CardHeader>
           <CardBody>
-            <div className="space-y-4">
-              {recentActivity.map((item) => (
-                <div
-                  key={item.title}
-                  className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200/70 bg-white px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {item.title}
-                    </p>
-                    <p className="text-xs text-slate-500">{item.detail}</p>
+            {activity.length ? (
+              <div className="space-y-4">
+                {activity.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200/70 bg-white px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {item.title}
+                      </p>
+                      <p className="text-xs text-slate-500">{item.detail}</p>
+                    </div>
+                    <span className="text-xs text-slate-400">{item.time}</span>
                   </div>
-                  <span className="text-xs text-slate-400">{item.time}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">
+                No recent activity yet. Generate recommendations or a strategy to populate this feed.
+              </p>
+            )}
           </CardBody>
         </Card>
 
@@ -237,7 +273,7 @@ export default function DashboardPage() {
               <span className="text-slate-400">→</span>
             </Link>
             <Link
-              href="/campaigns/camp-demo-001"
+              href={strategyHref}
               className="flex items-center justify-between rounded-2xl border border-slate-900 bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
               {t("action_generate_strategy")}
