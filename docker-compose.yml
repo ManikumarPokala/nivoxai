@@ -16,7 +16,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
+      start_period: 15s
 
   backend-ai:
     build:

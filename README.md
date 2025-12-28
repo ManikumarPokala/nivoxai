@@ -42,7 +42,7 @@ Used only for protected demo admin actions (guardrails). Never use in production
 ## CI notes (public demo-safe)
 - CI runs in demo-safe mode with stubbed keys and `DEMO_MODE=true`.
 - Image push is skipped unless `GHCR_PUSH=true` is configured in GitHub secrets.
-- Smoke tests are executed from repo root: `bash scripts/ci_smoke.sh`.
+- Smoke tests are executed from repo root with `bash scripts/ci_smoke.sh`.
 
 Author: Manikumar Pokala
 Contact: manikumarp183@gmail.com

@@ -25,7 +25,7 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install -U pip
-          python -m pip install fastapi uvicorn scikit-learn numpy pandas pydantic pytest
+          python -m pip install fastapi uvicorn scikit-learn numpy pandas pydantic pytest httpx
 
       - name: Compile backend-ai + eval
         run: |
@@ -148,9 +148,31 @@ jobs:
         run: |
           docker compose up -d --build
 
+      - name: Wait for containers to be healthy
+        run: |
+          set -e
+          services=("nivoxai-postgres" "nivoxai-backend-ai" "nivoxai-backend-api" "nivoxai-frontend")
+          for svc in "${services[@]}"; do
+            echo "Waiting for $svc to be healthy..."
+            for i in {1..60}; do
+              status=$(docker inspect -f '{{.State.Health.Status}}' "$svc" 2>/dev/null || echo "starting")
+              if [ "$status" = "healthy" ]; then
+                echo "$svc is healthy."
+                break
+              fi
+              if [ "$i" -eq 60 ]; then
+                echo "$svc did not become healthy in time."
+                docker ps
+                docker logs "$svc" || true
+                exit 1
+              fi
+              sleep 2
+            done
+          done
+
       - name: Run smoke checks
         run: |
-          scripts/ci_smoke.sh
+          bash scripts/ci_smoke.sh
 
       - name: Tear down services
         if: always()
