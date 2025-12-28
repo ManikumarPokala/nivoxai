@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PlayCircle, Zap } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { useI18n } from "@/i18n";
 
 type Campaign = {
   id: string;
@@ -93,6 +95,7 @@ const demoInfluencers: Influencer[] = [
 ];
 
 export default function QARecommendPage() {
+  const { t } = useI18n();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string>("");
   const [payloadJson, setPayloadJson] = useState<string>("");
@@ -205,8 +208,18 @@ export default function QARecommendPage() {
         </CardHeader>
         <CardBody className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <Button onClick={loadCampaigns}>Load campaigns</Button>
-            <Button onClick={runRecommend}>Run recommendation</Button>
+            <Button onClick={loadCampaigns}>
+              <span className="flex items-center gap-2">
+                <PlayCircle className="h-4 w-4" />
+                {t("action_load_campaigns")}
+              </span>
+            </Button>
+            <Button onClick={runRecommend}>
+              <span className="flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                {t("action_run_recommend")}
+              </span>
+            </Button>
             <Button variant="ghost" onClick={runAbCompare}>
               Run A/B compare
             </Button>
@@ -288,8 +301,8 @@ export default function QARecommendPage() {
                 </div>
               ))
             ) : (
-              <p className="text-xs text-slate-500">No recommendations yet.</p>
-            )}
+            <p className="text-xs text-slate-500">{t("empty_no_results")}</p>
+          )}
           </CardBody>
         </Card>
 

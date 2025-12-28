@@ -6,7 +6,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import Skeleton from "@/components/ui/Skeleton";
 import { ragInfluencers, type RagResult } from "@/lib/api";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/i18n";
 
 export default function DiscoveryPage() {
   const { t } = useI18n();

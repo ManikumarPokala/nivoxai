@@ -15,7 +15,7 @@ import {
 } from "@/lib/api";
 import { requestJson } from "@/lib/apiClient";
 import { AI_BASE_URL, API_BASE_URL } from "@/lib/urls";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/i18n";
 import {
   clearAuthToken,
   clearStoredTenantId,

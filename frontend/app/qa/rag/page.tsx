@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Search } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { useI18n } from "@/i18n";
 
 type RagHit = {
   id: string;
@@ -24,6 +26,7 @@ type RagHit = {
 };
 
 export default function QARagPage() {
+  const { t } = useI18n();
   const [query, setQuery] = useState("skincare creators in Thailand");
   const [mode, setMode] = useState<"vector" | "keyword" | "hybrid">("hybrid");
   const [topK, setTopK] = useState(5);
@@ -112,7 +115,12 @@ export default function QARagPage() {
               Rerank
             </label>
           </div>
-          <Button onClick={runSearch}>Run retrieval</Button>
+          <Button onClick={runSearch}>
+            <span className="flex items-center gap-2">
+              <Search className="h-4 w-4" />
+              {t("action_run_rag")}
+            </span>
+          </Button>
           {error ? <p className="text-xs text-rose-600">{error}</p> : null}
         </CardBody>
       </Card>
@@ -146,7 +154,7 @@ export default function QARagPage() {
               </div>
             ))
           ) : (
-            <p className="text-xs text-slate-500">No results yet.</p>
+            <p className="text-xs text-slate-500">{t("empty_no_results")}</p>
           )}
         </CardBody>
       </Card>

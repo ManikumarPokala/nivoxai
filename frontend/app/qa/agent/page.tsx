@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Bot, PlayCircle } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { useI18n } from "@/i18n";
 
 type Campaign = {
   id: string;
@@ -70,11 +72,13 @@ const demoInfluencers = [
 ];
 
 export default function QAAgentPage() {
+  const { t } = useI18n();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string>("");
   const [response, setResponse] = useState<AgentResponse | null>(null);
   const [trace, setTrace] = useState<AgentStep[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
 
   const activeCampaign = useMemo(
     () => campaigns.find((c) => c.id === campaignId) ?? null,
@@ -97,6 +101,10 @@ export default function QAAgentPage() {
   };
 
   const runAgent = async () => {
+    if (running) {
+      return;
+    }
+    setRunning(true);
     const campaign = activeCampaign ?? {
       id: "camp-qa-001",
       brand_name: "QA Brand",
@@ -112,6 +120,7 @@ export default function QAAgentPage() {
     });
     if (recResult.error || !recResult.data) {
       setError(recResult.error ?? "Recommendation failed.");
+      setRunning(false);
       return;
     }
     const agentResult = await requestJson<AgentResponse>("/api/chat-strategy", {
@@ -124,11 +133,13 @@ export default function QAAgentPage() {
     });
     if (agentResult.error || !agentResult.data) {
       setError(agentResult.error ?? "Agent failed.");
+      setRunning(false);
       return;
     }
     setResponse(agentResult.data);
     setTrace(agentResult.data.trace ?? []);
     setError(null);
+    setRunning(false);
   };
 
   return (
@@ -146,8 +157,18 @@ export default function QAAgentPage() {
         </CardHeader>
         <CardBody className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <Button onClick={loadCampaigns}>Load campaigns</Button>
-            <Button onClick={runAgent}>Run strategy agent</Button>
+            <Button onClick={loadCampaigns}>
+              <span className="flex items-center gap-2">
+                <PlayCircle className="h-4 w-4" />
+                {t("action_load_campaigns")}
+              </span>
+            </Button>
+            <Button onClick={runAgent} disabled={running}>
+              <span className="flex items-center gap-2">
+                <Bot className="h-4 w-4" />
+                {running ? t("status_loading") : t("action_run_agent")}
+              </span>
+            </Button>
           </div>
           <select
             value={campaignId}

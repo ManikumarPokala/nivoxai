@@ -15,7 +15,7 @@ import {
 import { subscribeActivity, type ActivityItem } from "@/lib/activity";
 import { subscribeAuth } from "@/lib/auth";
 import { pushToast } from "@/lib/toast";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/i18n";
 
 export default function DashboardPage() {
   const { t } = useI18n();

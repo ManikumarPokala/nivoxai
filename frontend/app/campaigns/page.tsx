@@ -14,7 +14,7 @@ import {
   type CampaignInput,
 } from "@/lib/api";
 import { logAnalyticsEvent } from "@/lib/analytics";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/i18n";
 import { getAuthToken, getStoredTenantId, getTokenRole, subscribeAuth } from "@/lib/auth";
 import { recordActivity } from "@/lib/activity";
 import { pushToast } from "@/lib/toast";

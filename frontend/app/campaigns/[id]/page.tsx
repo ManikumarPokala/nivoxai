@@ -23,7 +23,7 @@ import {
 } from "@/lib/api";
 import { getCampaignAnalytics, logAnalyticsEvent, type CampaignAnalytics } from "@/lib/analytics";
 import { buildCampaignPayload } from "@/lib/payloads";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/i18n";
 import {
   getAuthToken,
   bootstrapDemoSession,

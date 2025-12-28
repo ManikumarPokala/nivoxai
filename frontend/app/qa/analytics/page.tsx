@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Activity, RefreshCcw, Zap } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { useI18n } from "@/i18n";
 
 type AnalyticsSummary = {
   total_events: number;
@@ -35,6 +37,7 @@ type AnalyticsEvent = {
 };
 
 export default function QAAnalyticsPage() {
+  const { t } = useI18n();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [campaignId, setCampaignId] = useState("");
   const [campaignAnalytics, setCampaignAnalytics] = useState<CampaignAnalytics | null>(null);
@@ -116,12 +119,23 @@ export default function QAAnalyticsPage() {
       </header>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={loadSummary}>Refresh summary</Button>
+        <Button onClick={loadSummary}>
+          <span className="flex items-center gap-2">
+            <RefreshCcw className="h-4 w-4" />
+            {t("action_refresh")}
+          </span>
+        </Button>
         <Button variant="ghost" onClick={loadEvents}>
-          Refresh events
+          <span className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            {t("action_refresh")}
+          </span>
         </Button>
         <Button variant="ghost" onClick={fireTestEvent}>
-          Fire test event
+          <span className="flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            {t("action_fire_test_event")}
+          </span>
         </Button>
       </div>
 
@@ -172,7 +186,7 @@ export default function QAAnalyticsPage() {
               {JSON.stringify(campaignAnalytics, null, 2)}
             </pre>
           ) : (
-            <p className="text-xs text-slate-500">No campaign analytics loaded.</p>
+            <p className="text-xs text-slate-500">{t("empty_no_results")}</p>
           )}
         </CardBody>
       </Card>
@@ -213,7 +227,7 @@ export default function QAAnalyticsPage() {
               </div>
             ))}
             {!events.length ? (
-              <p className="text-xs text-slate-500">No events yet.</p>
+              <p className="text-xs text-slate-500">{t("empty_no_results")}</p>
             ) : null}
           </div>
         </CardBody>

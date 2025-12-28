@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { KeyRound } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { requestJson } from "@/lib/apiClient";
+import { useI18n } from "@/i18n";
 
 export default function QAAdminPage() {
+  const { t } = useI18n();
   const [demoKey, setDemoKey] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -59,7 +62,10 @@ export default function QAAdminPage() {
             I understand this is a protected admin action.
           </label>
           <Button onClick={runAdminPing} disabled={!confirmed}>
-            Verify admin access
+            <span className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4" />
+              {t("action_verify_admin")}
+            </span>
           </Button>
           {result ? <p className="text-xs text-emerald-600">status: {result}</p> : null}
           {error ? <p className="text-xs text-rose-600">{error}</p> : null}

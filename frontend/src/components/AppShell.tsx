@@ -4,7 +4,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "./ui/utils";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/i18n";
+import {
+  Activity,
+  BarChart3,
+  Brain,
+  FileCheck2,
+  FolderKanban,
+  KeyRound,
+  MoreVertical,
+  PlayCircle,
+  Radar,
+  ShieldCheck,
+  Stethoscope,
+  Zap,
+} from "lucide-react";
 import DiagnosticsDrawer from "@/components/DiagnosticsDrawer";
 import ToastViewport from "@/components/ui/ToastViewport";
 import {
@@ -23,49 +37,41 @@ export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [lastCampaignId, setLastCampaignId] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<"ready" | "missing" | "bootstrapping">(
     "bootstrapping"
   );
   const [sessionTenant, setSessionTenant] = useState<string | null>(getStoredTenantId());
   const [sessionRole, setSessionRole] = useState<string | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const initRef = useRef(false);
   const loginInFlightRef = useRef(false);
   const { locale, setLocale, t } = useI18n();
   const gitSha = process.env.NEXT_PUBLIC_GIT_SHA ?? "dev";
 
   const navItems = [
-    { label: t("nav_dashboard"), href: "/dashboard" },
-    { label: t("nav_campaigns"), href: "/campaigns" },
-    { label: t("nav_discovery"), href: "/discovery" },
-    { label: t("nav_analytics"), href: "/analytics" },
-    { label: t("nav_settings"), href: "/settings" },
-    { label: "Demo", href: "/demo" },
-    { label: "QA Ops", href: "/qa/ops" },
-    { label: "QA Auth", href: "/qa/auth" },
-    { label: "QA Campaigns", href: "/qa/campaigns" },
-    { label: "QA Recommend", href: "/qa/recommend" },
-    { label: "QA RAG", href: "/qa/rag" },
-    { label: "QA Agent", href: "/qa/agent" },
-    { label: "QA Analytics", href: "/qa/analytics" },
-    { label: "QA Admin", href: "/qa/admin" },
+    { label: t("nav_demo"), href: "/demo", icon: PlayCircle },
+    { label: t("nav_qa_ops"), href: "/qa/ops", icon: Stethoscope },
+    { label: t("nav_qa_auth"), href: "/qa/auth", icon: ShieldCheck },
+    { label: t("nav_qa_campaigns"), href: "/qa/campaigns", icon: FolderKanban },
+    { label: t("nav_qa_recommend"), href: "/qa/recommend", icon: Zap },
+    { label: t("nav_qa_rag"), href: "/qa/rag", icon: Radar },
+    { label: t("nav_qa_agent"), href: "/qa/agent", icon: Brain },
+    { label: t("nav_qa_analytics"), href: "/qa/analytics", icon: BarChart3 },
+    { label: t("nav_qa_admin"), href: "/qa/admin", icon: KeyRound },
   ];
 
   const titleMap: Record<string, string> = {
-    "/dashboard": t("page_dashboard_title"),
     "/campaigns": t("page_campaigns_title"),
-    "/discovery": t("page_discovery_title"),
     "/analytics": t("page_analytics_title"),
-    "/settings": t("page_settings_title"),
-    "/demo": "Reviewer Demo",
-    "/qa/ops": "QA Ops",
-    "/qa/auth": "QA Auth",
-    "/qa/campaigns": "QA Campaigns",
-    "/qa/recommend": "QA Recommend",
-    "/qa/rag": "QA RAG",
-    "/qa/agent": "QA Agent",
-    "/qa/analytics": "QA Analytics",
-    "/qa/admin": "QA Admin",
+    "/demo": t("demo_title"),
+    "/qa/ops": t("nav_qa_ops"),
+    "/qa/auth": t("nav_qa_auth"),
+    "/qa/campaigns": t("nav_qa_campaigns"),
+    "/qa/recommend": t("nav_qa_recommend"),
+    "/qa/rag": t("nav_qa_rag"),
+    "/qa/agent": t("nav_qa_agent"),
+    "/qa/analytics": t("nav_qa_analytics"),
+    "/qa/admin": t("nav_qa_admin"),
   };
 
   const pageTitle = useMemo(() => {
@@ -80,12 +86,6 @@ export default function AppShell({ children }: AppShellProps) {
     return titleMap[pathname] ?? "NivoxAI";
   }, [pathname, t]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    setLastCampaignId(window.localStorage.getItem("nivoxai_last_campaign"));
-  }, []);
 
   async function ensureSession() {
     if (sessionStatus === "ready" || loginInFlightRef.current) {
@@ -144,10 +144,6 @@ export default function AppShell({ children }: AppShellProps) {
     };
   }, []);
 
-  const strategyHref = lastCampaignId
-    ? `/campaigns/${lastCampaignId}?tab=strategy`
-    : "/campaigns";
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-[#f7f6f2] to-slate-100 text-slate-900">
       <div className="flex">
@@ -183,7 +179,10 @@ export default function AppShell({ children }: AppShellProps) {
                       : "text-slate-600 hover:bg-slate-100"
                   )}
                 >
-                  <span>{item.label}</span>
+                  <span className="flex items-center gap-2">
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </span>
                   {isActive ? (
                     <span className="text-xs text-slate-200">●</span>
                   ) : null}
@@ -227,7 +226,8 @@ export default function AppShell({ children }: AppShellProps) {
               <div className="hidden items-center gap-3 lg:flex">
                 {sessionStatus === "ready" ? (
                   <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    Session Active • {sessionTenant ?? "tenant"} • {sessionRole ?? "role"}
+                    {t("header_session_active")} • {sessionTenant ?? "tenant"} •{" "}
+                    {sessionRole ?? "role"}
                   </span>
                 ) : (
                   <button
@@ -235,7 +235,7 @@ export default function AppShell({ children }: AppShellProps) {
                     onClick={ensureSession}
                     className="inline-flex items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700"
                   >
-                    Start Demo Session
+                    {t("header_start_demo")}
                   </button>
                 )}
                 <button
@@ -247,42 +247,110 @@ export default function AppShell({ children }: AppShellProps) {
                   }}
                   className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600"
                 >
-                  Reset Session
+                  <span className="flex items-center gap-2">
+                    <FileCheck2 className="h-4 w-4" />
+                    {t("header_reset_session")}
+                  </span>
                 </button>
-                <Link
-                  href="/campaigns"
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                >
-                  {t("action_create_campaign")}
-                </Link>
-                <Link
-                  href="/discovery"
-                  className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
-                >
-                  {t("action_discover")}
-                </Link>
-                <Link
-                  href={strategyHref}
-                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                >
-                  {t("action_generate_strategy")}
-                </Link>
                 <button
                   type="button"
                   onClick={() => setShowDiagnostics(true)}
                   className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600"
                 >
-                  Diagnostics
+                  <span className="flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    {t("diagnostics_subtitle")}
+                  </span>
                 </button>
-                <select
-                  value={locale}
-                  onChange={(event) => setLocale(event.target.value as typeof locale)}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600"
-                  aria-label="Language selector"
+                <div className="flex items-center rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
+                  <button
+                    type="button"
+                    onClick={() => setLocale("en")}
+                    className={cn(
+                      "rounded-full px-2 py-1",
+                      locale === "en" ? "bg-slate-900 text-white" : "text-slate-600"
+                    )}
+                  >
+                    EN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocale("th")}
+                    className={cn(
+                      "rounded-full px-2 py-1",
+                      locale === "th" ? "bg-slate-900 text-white" : "text-slate-600"
+                    )}
+                  >
+                    TH
+                  </button>
+                </div>
+              </div>
+              <div className="relative flex items-center gap-2 lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowDiagnostics(true)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600"
+                  aria-label={t("diagnostics_subtitle")}
                 >
-                  <option value="en">EN</option>
-                  <option value="th">TH</option>
-                </select>
+                  <Activity className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionsOpen((prev) => !prev)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600"
+                  aria-label="Menu"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+                {actionsOpen ? (
+                  <div className="absolute right-0 top-11 z-50 w-52 rounded-2xl border border-slate-200 bg-white p-3 text-xs shadow-lg">
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={ensureSession}
+                        className="w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left font-semibold text-amber-700"
+                      >
+                        {t("header_start_demo")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await requestJson("/api/session", { method: "DELETE" });
+                          setSessionStatus("missing");
+                          void ensureSession();
+                        }}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-left text-slate-600"
+                      >
+                        {t("header_reset_session")}
+                      </button>
+                      <div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+                        <span className="text-slate-500">Lang</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setLocale("en")}
+                            className={cn(
+                              "rounded-full px-2 py-1",
+                              locale === "en" ? "bg-slate-900 text-white" : "text-slate-600"
+                            )}
+                          >
+                            EN
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLocale("th")}
+                            className={cn(
+                              "rounded-full px-2 py-1",
+                              locale === "th" ? "bg-slate-900 text-white" : "text-slate-600"
+                            )}
+                          >
+                            TH
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </header>
@@ -291,8 +359,8 @@ export default function AppShell({ children }: AppShellProps) {
             {sessionStatus !== "ready" ? (
               <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
                 {sessionStatus === "bootstrapping"
-                  ? "Initializing demo session..."
-                  : "Session missing. If using HTTP, secure cookies may be blocked. Click Start Demo Session."}
+                  ? t("header_session_bootstrapping")
+                  : t("header_session_missing")}
               </div>
             ) : null}
             {children}

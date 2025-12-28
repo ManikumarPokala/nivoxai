@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, PlusCircle, RefreshCcw, Save } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { useI18n } from "@/i18n";
 
 type Campaign = {
   id: string;
@@ -16,6 +18,7 @@ type Campaign = {
 };
 
 export default function QACampaignsPage() {
+  const { t } = useI18n();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [rawPayload, setRawPayload] = useState<string>("{}");
@@ -112,9 +115,17 @@ export default function QACampaignsPage() {
           </CardHeader>
           <CardBody>
             <div className="flex gap-2">
-              <Button onClick={loadCampaigns}>Refresh</Button>
+              <Button onClick={loadCampaigns}>
+                <span className="flex items-center gap-2">
+                  <RefreshCcw className="h-4 w-4" />
+                  {t("action_refresh")}
+                </span>
+              </Button>
               <Button variant="ghost" onClick={sendInvalidPayload}>
-                Send invalid payload
+                <span className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  {t("action_invalid_payload")}
+                </span>
               </Button>
             </div>
             {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
@@ -137,7 +148,7 @@ export default function QACampaignsPage() {
                 </button>
               ))}
               {!campaigns.length ? (
-                <p className="text-xs text-slate-500">No campaigns returned.</p>
+                <p className="text-xs text-slate-500">{t("empty_no_results")}</p>
               ) : null}
             </div>
           </CardBody>
@@ -193,9 +204,17 @@ export default function QACampaignsPage() {
               />
             </label>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={createCampaign}>Create campaign</Button>
+              <Button onClick={createCampaign}>
+                <span className="flex items-center gap-2">
+                  <PlusCircle className="h-4 w-4" />
+                  {t("action_create_campaign")}
+                </span>
+              </Button>
               <Button variant="ghost" onClick={updateCampaign}>
-                Update selected campaign
+                <span className="flex items-center gap-2">
+                  <Save className="h-4 w-4" />
+                  {t("action_update_campaign")}
+                </span>
               </Button>
               {updateStatus ? (
                 <span className="text-xs text-slate-500">{updateStatus}</span>

@@ -2,7 +2,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 import { Sora } from "next/font/google";
 import AppShell from "@/components/AppShell";
-import { I18nProvider } from "@/lib/i18n";
+import { I18nProvider } from "@/i18n";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 const sora = Sora({

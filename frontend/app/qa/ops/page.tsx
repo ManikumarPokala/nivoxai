@@ -2,7 +2,9 @@
 
 import type React from "react";
 import { useState } from "react";
+import { PlayCircle } from "lucide-react";
 import { requestJson } from "@/lib/apiClient";
+import { useI18n } from "@/i18n";
 
 type ResultState = {
   label: string;
@@ -19,6 +21,7 @@ const initialState: ResultState = {
 };
 
 export default function QAOpsPage() {
+  const { t } = useI18n();
   const [healthz, setHealthz] = useState<ResultState>({ ...initialState, label: "Healthz" });
   const [modelStatus, setModelStatus] = useState<ResultState>({
     ...initialState,
@@ -143,14 +146,20 @@ export default function QAOpsPage() {
                       : "text-slate-400"
                 }
               >
-                {state.status}
+                {state.status === "success"
+                  ? t("status_pass")
+                  : state.status === "error"
+                    ? t("status_fail")
+                    : state.status === "loading"
+                      ? t("status_loading")
+                      : "idle"}
               </span>
             </div>
             {state.error ? (
               <p className="mt-2 text-xs text-rose-600">{state.error}</p>
             ) : null}
             <pre className="mt-3 max-h-48 overflow-auto rounded-lg bg-slate-50 p-2 text-[11px] text-slate-700">
-              {state.payload ? JSON.stringify(state.payload, null, 2) : "No response yet."}
+              {state.payload ? JSON.stringify(state.payload, null, 2) : t("empty_no_results")}
             </pre>
           </div>
         ))}
@@ -159,25 +168,40 @@ export default function QAOpsPage() {
       <div className="rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Smoke Test</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              {t("action_smoke_test")}
+            </p>
             <p className="text-sm text-slate-600">
               Sequentially calls health → model status → campaigns → analytics.
             </p>
           </div>
           <button
             onClick={runSmokeTest}
+            disabled={smokeResult.status === "running"}
             className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
           >
-            Run smoke test
+            <span className="flex items-center gap-2">
+              <PlayCircle className="h-4 w-4" />
+              {smokeResult.status === "running" ? t("status_loading") : t("action_smoke_test")}
+            </span>
           </button>
         </div>
         <div className="mt-3 space-y-2 text-xs">
-          <p>Status: {smokeResult.status}</p>
+          <p>
+            {t("label_status")}:{" "}
+            {smokeResult.status === "pass"
+              ? t("status_pass")
+              : smokeResult.status === "fail"
+                ? t("status_fail")
+                : smokeResult.status === "running"
+                  ? t("status_loading")
+                  : "idle"}
+          </p>
           {smokeResult.steps.map((step) => (
             <div key={step.label} className="flex items-center justify-between">
               <span>{step.label}</span>
               <span className={step.ok ? "text-emerald-600" : "text-rose-600"}>
-                {step.ok ? "PASS" : `FAIL ${step.error ?? ""}`}
+                {step.ok ? t("status_pass") : `${t("status_fail")} ${step.error ?? ""}`}
               </span>
             </div>
           ))}
