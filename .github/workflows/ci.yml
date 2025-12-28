@@ -8,6 +8,10 @@ on:
 jobs:
   backend-ai-quality:
     runs-on: ubuntu-latest
+    env:
+      DEMO_MODE: "true"
+      OPENAI_API_KEY: "demo"
+      JWT_SECRET: "dev-jwt-secret"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,24 +27,21 @@ jobs:
           python -m pip install -U pip
           python -m pip install fastapi uvicorn scikit-learn numpy pandas pydantic pytest
 
-      - name: Compile backend-ai
+      - name: Compile backend-ai + eval
         run: |
-          cd backend-ai
-          python -m compileall app eval
+          python -m compileall backend-ai/app eval
 
       - name: Run offline eval
         run: |
-          cd backend-ai
-          PYTHONPATH=. python -m eval.run_eval
+          PYTHONPATH=backend-ai python -m eval.run_eval
 
       - name: Run backend-ai tests
         run: |
-          cd backend-ai
-          python -m pytest -q
+          PYTHONPATH=backend-ai python -m pytest -q backend-ai/tests
 
       - name: Run redteam harness
         run: |
-          python eval/run_redteam.py
+          PYTHONPATH=backend-ai python eval/run_redteam.py
 
   backend-api-build:
     runs-on: ubuntu-latest
@@ -137,6 +138,8 @@ jobs:
 
   integration-smoke:
     runs-on: ubuntu-latest
+    env:
+      DEMO_MODE: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -49,17 +49,34 @@ jobs:
   build-push:
     needs: build-test
     runs-on: ubuntu-latest
+    env:
+      CAN_PUSH: ${{ secrets.GHCR_PUSH == 'true' }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Log in to GHCR
+        if: env.CAN_PUSH == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build backend-ai (no push)
+        if: env.CAN_PUSH != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend-ai
+          file: ./backend-ai/Dockerfile
+          push: false
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          tags: |
+            ghcr.io/manikumarpokala/nivoxai-backend-ai:${{ github.sha }}
+            ghcr.io/manikumarpokala/nivoxai-backend-ai:latest
+
       - name: Build and push backend-ai (GHCR)
+        if: env.CAN_PUSH == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./backend-ai
@@ -71,7 +88,19 @@ jobs:
             ghcr.io/manikumarpokala/nivoxai-backend-ai:${{ github.sha }}
             ghcr.io/manikumarpokala/nivoxai-backend-ai:latest
 
+      - name: Build backend-api (no push)
+        if: env.CAN_PUSH != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend-api
+          file: ./backend-api/Dockerfile
+          push: false
+          tags: |
+            ghcr.io/manikumarpokala/nivoxai-backend-api:${{ github.sha }}
+            ghcr.io/manikumarpokala/nivoxai-backend-api:latest
+
       - name: Build and push backend-api (GHCR)
+        if: env.CAN_PUSH == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./backend-api
@@ -81,7 +110,21 @@ jobs:
             ghcr.io/manikumarpokala/nivoxai-backend-api:${{ github.sha }}
             ghcr.io/manikumarpokala/nivoxai-backend-api:latest
 
+      - name: Build frontend (no push)
+        if: env.CAN_PUSH != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          tags: |
+            ghcr.io/manikumarpokala/nivoxai-frontend:${{ github.sha }}
+            ghcr.io/manikumarpokala/nivoxai-frontend:latest
+
       - name: Build and push frontend (GHCR)
+        if: env.CAN_PUSH == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
@@ -94,6 +137,7 @@ jobs:
             ghcr.io/manikumarpokala/nivoxai-frontend:latest
 
       - name: Print pushed images
+        if: env.CAN_PUSH == 'true'
         run: |
           echo "ghcr.io/manikumarpokala/nivoxai-frontend:${{ github.sha }}"
           echo "ghcr.io/manikumarpokala/nivoxai-frontend:latest"
@@ -101,3 +145,8 @@ jobs:
           echo "ghcr.io/manikumarpokala/nivoxai-backend-api:latest"
           echo "ghcr.io/manikumarpokala/nivoxai-backend-ai:${{ github.sha }}"
           echo "ghcr.io/manikumarpokala/nivoxai-backend-ai:latest"
+
+      - name: Push skipped (no GHCR secrets)
+        if: env.CAN_PUSH != 'true'
+        run: |
+          echo "GHCR push skipped. Set GHCR_PUSH=true to enable image push."

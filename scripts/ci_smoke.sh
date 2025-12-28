@@ -16,7 +16,7 @@ wait_for() {
   local retries=40
   local delay=2
   for ((i=1; i<=retries; i++)); do
-    if curl -s -o /dev/null "$url"; then
+    if curl -sf -o /dev/null "$url"; then
       return 0
     fi
     sleep "$delay"
@@ -69,11 +69,23 @@ PY
 }
 
 echo "Waiting for frontend..."
-wait_for "$BASE_URL"
+wait_for "$BASE_URL/demo"
 
 echo "Bootstrapping demo session..."
-request "POST" "$BASE_URL/api/auth/demo" "{}"
-assert_request_id
+for i in {1..10}; do
+  request "POST" "$BASE_URL/api/auth/demo" "{}"
+  if grep -iq "^HTTP/.* 2" "$HEADERS_FILE"; then
+    assert_request_id
+    break
+  fi
+  if [ "$i" -eq 10 ]; then
+    echo "Failed to bootstrap demo session"
+    cat "$HEADERS_FILE"
+    cat "$BODY_FILE"
+    exit 1
+  fi
+  sleep 2
+done
 
 echo "Healthz..."
 request "GET" "$BASE_URL/api/healthz"
