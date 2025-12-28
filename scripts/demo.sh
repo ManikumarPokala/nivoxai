@@ -23,6 +23,7 @@ if ! curl -fsS "${AI_BASE}/health" >/dev/null; then
 fi
 
 echo "Tip: run 'make db-seed' for richer analytics data."
+make db-seed >/dev/null 2>&1 || true
 
 echo "Obtaining demo JWT tokens..."
 ADMIN_TOKEN=$(curl -s "${API_BASE}/auth/login" \
@@ -42,18 +43,29 @@ echo "Analytics summary with admin token:"
 curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" "${API_BASE}/v1/analytics/summary" | \
   python -m json.tool | head -n 20
 
+echo "Fetching tenant A campaign..."
+CAMPAIGN_ID=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" "${API_BASE}/v1/campaigns" | \
+  python -c 'import sys, json; data=json.load(sys.stdin); print(data[0]["id"] if data else "")')
+
+if [ -z "${CAMPAIGN_ID}" ]; then
+  CAMPAIGN_ID=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" -H "Content-Type: application/json" \
+    -d '{"title":"Demo Campaign","country":"Thailand","budget":10000}' \
+    "${API_BASE}/v1/campaigns" | python -c 'import sys, json; print(json.load(sys.stdin)["id"])')
+fi
+
 echo "Cross-tenant check (tenant B token -> tenant A campaign):"
 curl -s -o /dev/null -w "%{http_code}\n" \
   -H "Authorization: Bearer ${TENANT_B_TOKEN}" \
-  "${API_BASE}/v1/analytics/campaign/camp-demo-001"
+  "${API_BASE}/v1/analytics/campaign/${CAMPAIGN_ID}"
 
 echo "Recommendation sample:"
-curl -s "${API_BASE}/recommend" \
+RECOMMEND_STATUS=$(curl -s -o /tmp/recommend.json -w "%{http_code}\n" \
+  "${API_BASE}/recommend" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
     "campaign": {
-      "id": "camp-demo-001",
+      "id": "'"${CAMPAIGN_ID}"'",
       "brand_name": "Luma Beauty",
       "goal": "Launch skincare",
       "target_region": "Thailand",
@@ -87,6 +99,9 @@ curl -s "${API_BASE}/recommend" \
         "bio": "Fitness coach."
       }
     ]
-  }' | python -m json.tool | head -n 40
+  }')
+
+echo "${RECOMMEND_STATUS}"
+python -m json.tool /tmp/recommend.json | head -n 40
 
 echo "Demo complete."

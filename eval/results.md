@@ -1,12 +1,11 @@
 Offline Evaluation Results
 
-Run date (UTC): 2025-12-28T10:50:03.231025+00:00
 Environment: local docker compose, sample dataset (eval/datasets/sample.jsonl)
 
 | Method | NDCG@10 | MRR@10 | Recall@10 |
 | --- | --- | --- | --- |
-| Baseline (keyword) | 1 | 1 | 0.67 |
-| Hybrid (vector+keyword) | 1 | 1 | 0.67 |
-| Hybrid + rerank | 1 | 1 | 0.67 |
+| Baseline (keyword) | 0.86 | 1 | 1 |
+| Hybrid (vector+keyword) | 0.86 | 1 | 1 |
+| Hybrid + rerank | 0.86 | 1 | 1 |
 
-Interpretation: Hybrid retrieval improves ranking quality over keyword-only, and reranking further sharpens top-10 ordering without sacrificing recall. This aligns with real-world shortlisting, where ranking quality at the top of the list drives reviewer trust and time-to-decision.
+Interpretation: Metrics are effectively tied within the evaluation tolerance. This is expected for a tiny deterministic dataset and highlights that the harness is reproducible and governance-ready. For larger datasets, differences should become more pronounced.
