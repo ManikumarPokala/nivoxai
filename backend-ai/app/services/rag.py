@@ -19,6 +19,7 @@ class InfluencerDoc:
     bio: str
     category: str
     region: str
+    tenant_id: str | None = None
 
 
 INFLUENCER_DOCS: List[InfluencerDoc] = [
@@ -28,6 +29,7 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         bio="Skincare creator sharing humid-weather routines, glass skin tips, and product reviews.",
         category="beauty",
         region="Thailand",
+        tenant_id=None,
     ),
     InfluencerDoc(
         id="doc-002",
@@ -35,6 +37,7 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         bio="Ingredient-focused skincare deep dives with before-and-after routines for sensitive skin.",
         category="skincare",
         region="Vietnam",
+        tenant_id=None,
     ),
     InfluencerDoc(
         id="doc-003",
@@ -42,6 +45,7 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         bio="High-energy gaming streams, FPS tournaments, and gear reviews for competitive players.",
         category="gaming",
         region="United States",
+        tenant_id=None,
     ),
     InfluencerDoc(
         id="doc-004",
@@ -49,6 +53,7 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         bio="Daily fitness programming, HIIT workouts, and wellness habits for busy professionals.",
         category="fitness",
         region="Singapore",
+        tenant_id=None,
     ),
     InfluencerDoc(
         id="doc-005",
@@ -56,6 +61,7 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         bio="Gadget reviews, AI productivity tips, and smart home setups for tech enthusiasts.",
         category="tech",
         region="India",
+        tenant_id=None,
     ),
     InfluencerDoc(
         id="doc-006",
@@ -63,6 +69,7 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         bio="Adventure travel diaries with coastal hikes, drone shots, and creator gear breakdowns.",
         category="travel",
         region="Italy",
+        tenant_id=None,
     ),
     InfluencerDoc(
         id="doc-007",
@@ -70,6 +77,7 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         bio="Food creator highlighting street eats, cafe openings, and culinary storytelling.",
         category="food",
         region="South Korea",
+        tenant_id=None,
     ),
     InfluencerDoc(
         id="doc-008",
@@ -77,6 +85,7 @@ INFLUENCER_DOCS: List[InfluencerDoc] = [
         bio="Sustainable fashion edits, capsule wardrobe advice, and seasonal styling tips.",
         category="fashion",
         region="United Kingdom",
+        tenant_id=None,
     ),
 ]
 
@@ -108,6 +117,7 @@ def search_influencers(
     mode: str | None = None,
     rerank: bool = False,
     candidate_k: int | None = None,
+    tenant_id: str | None = None,
 ) -> List[Tuple[InfluencerDoc, float]]:
     if not query.strip():
         return []
@@ -116,8 +126,9 @@ def search_influencers(
     selected_mode = mode or DEFAULT_MODE
     candidate_k = candidate_k or max(top_k * 3, top_k)
 
-    vector_scores = _score_vector(query)
-    keyword_scores = _score_keyword(query)
+    filtered_docs, indices = _filter_docs(tenant_id)
+    vector_scores = _score_vector(query, indices)
+    keyword_scores = _score_keyword(query, indices)
 
     if selected_mode == "vector":
         combined_scores = vector_scores
@@ -131,7 +142,9 @@ def search_influencers(
         key=lambda idx: combined_scores[idx],
         reverse=True,
     )[:candidate_k]
-    candidates = [(INFLUENCER_DOCS[index], combined_scores[index]) for index in ranked_indices]
+    candidates = [
+        (filtered_docs[index], combined_scores[index]) for index in ranked_indices
+    ]
 
     final_results = _maybe_rerank(query, candidates, rerank)
     final_results = final_results[:top_k]
@@ -163,16 +176,30 @@ def refresh_documents(docs: List[InfluencerDoc]) -> None:
     )
 
 
-def _score_vector(query: str) -> List[float]:
+def _score_vector(query: str, indices: List[int]) -> List[float]:
     query_vector = _VECTORIZER.transform([query])
-    scores = cosine_similarity(query_vector, _DOC_MATRIX).flatten()
+    matrix = _DOC_MATRIX[indices] if indices else _DOC_MATRIX
+    scores = cosine_similarity(query_vector, matrix).flatten()
     return _normalize_scores(scores.tolist())
 
 
-def _score_keyword(query: str) -> List[float]:
+def _score_keyword(query: str, indices: List[int]) -> List[float]:
     query_vector = _KEYWORD_VECTORIZER.transform([query])
-    scores = (query_vector @ _KEYWORD_MATRIX.T).toarray().flatten().tolist()
+    matrix = _KEYWORD_MATRIX[indices] if indices else _KEYWORD_MATRIX
+    scores = (query_vector @ matrix.T).toarray().flatten().tolist()
     return _normalize_scores(scores)
+
+
+def _filter_docs(tenant_id: str | None) -> tuple[List[InfluencerDoc], List[int]]:
+    if not tenant_id:
+        return INFLUENCER_DOCS, list(range(len(INFLUENCER_DOCS)))
+    filtered: List[InfluencerDoc] = []
+    indices: List[int] = []
+    for idx, doc in enumerate(INFLUENCER_DOCS):
+        if doc.tenant_id is None or doc.tenant_id == tenant_id:
+            filtered.append(doc)
+            indices.append(idx)
+    return filtered, indices
 
 
 def _normalize_scores(scores: List[float]) -> List[float]:

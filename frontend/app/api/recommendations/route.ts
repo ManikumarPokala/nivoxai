@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BACKEND_AI_BASE_URL } from "@/lib/urls";
+import { BACKEND_API_BASE_URL } from "@/lib/urls";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const response = await fetch(`${BACKEND_AI_BASE_URL}/recommend`, {
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (process.env.DEMO_AUTH_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.DEMO_AUTH_TOKEN}`;
+    }
+    const response = await fetch(`${BACKEND_API_BASE_URL}/recommend`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
     const data = await response.json();

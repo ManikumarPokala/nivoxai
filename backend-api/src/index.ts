@@ -1,6 +1,6 @@
 import axios from "axios";
 import cors from "cors";
-import { randomUUID } from "crypto";
+import crypto, { randomUUID } from "crypto";
 import express, { Request, Response } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { Pool } from "pg";
@@ -45,7 +45,7 @@ interface AnalyticsEventRequest {
 type AuthContext = {
   user_id: string;
   tenant_id: string;
-  role: "admin" | "analyst" | "viewer";
+  role: "admin" | "brand_user" | "viewer";
 };
 
 const AI_SERVICE_URL =
@@ -65,19 +65,34 @@ const PORT = Number(process.env.PORT) || 4000;
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-jwt-secret";
 const DEFAULT_TENANT_ID =
   process.env.DEMO_TENANT_ID ?? "00000000-0000-0000-0000-000000000001";
+const DEFAULT_TENANT_B_ID =
+  process.env.DEMO_TENANT_B_ID ?? "00000000-0000-0000-0000-000000000003";
 const DEFAULT_USER_ID =
   process.env.DEMO_USER_ID ?? "00000000-0000-0000-0000-000000000002";
+const DEFAULT_USER_B_ID =
+  process.env.DEMO_USER_B_ID ?? "00000000-0000-0000-0000-000000000004";
 const DEFAULT_USER_EMAIL = process.env.DEMO_USER_EMAIL ?? "admin@nivoxai.local";
 const DEFAULT_USER_NAME = process.env.DEMO_USER_NAME ?? "Demo Admin";
 const DEFAULT_USER_ROLE = process.env.DEMO_USER_ROLE ?? "admin";
+const DEFAULT_USER_PASSWORD = process.env.DEMO_USER_PASSWORD ?? "demo";
+const DEFAULT_USER_B_EMAIL = process.env.DEMO_USER_B_EMAIL ?? "user@tenantb.local";
+const DEFAULT_USER_B_NAME = process.env.DEMO_USER_B_NAME ?? "Tenant B User";
+const DEFAULT_USER_B_ROLE = process.env.DEMO_USER_B_ROLE ?? "brand_user";
 
-const pool = new Pool({
+export const pool = new Pool({
   host: process.env.PGHOST,
   port: process.env.PGPORT ? Number(process.env.PGPORT) : undefined,
   database: process.env.PGDATABASE,
   user: process.env.PGUSER,
   password: process.env.PGPASSWORD,
 });
+
+const hashPassword = (password: string): string => {
+  return crypto
+    .createHash("sha256")
+    .update(`${password}:${JWT_SECRET}`)
+    .digest("hex");
+};
 
 const ensureAnalyticsTables = async () => {
   await pool.query(`
@@ -150,7 +165,43 @@ const ensureAnalyticsTables = async () => {
       id UUID PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
+      password_hash TEXT NULL,
+      tenant_id UUID NULL REFERENCES tenants(id),
+      role TEXT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT NULL;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id UUID NULL;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NULL;`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS influencers (
+      id TEXT PRIMARY KEY,
+      tenant_id UUID NOT NULL REFERENCES tenants(id),
+      name TEXT NOT NULL,
+      platform TEXT NOT NULL,
+      category TEXT NOT NULL,
+      followers INT NOT NULL,
+      engagement_rate DOUBLE PRECISION NOT NULL,
+      region TEXT NOT NULL,
+      languages TEXT[] NOT NULL,
+      audience_age_range TEXT NOT NULL,
+      bio TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS influencer_documents (
+      id TEXT PRIMARY KEY,
+      tenant_id UUID NOT NULL REFERENCES tenants(id),
+      influencer_id TEXT NOT NULL REFERENCES influencers(id),
+      content TEXT NOT NULL,
+      platform TEXT NOT NULL,
+      last_active_at TIMESTAMPTZ NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
 
@@ -196,10 +247,22 @@ const ensureAnalyticsTables = async () => {
     [DEFAULT_TENANT_ID, "NivoxAI Demo"]
   );
   await pool.query(
+    `INSERT INTO tenants (id, name)
+     VALUES ($1, $2)
+     ON CONFLICT (id) DO NOTHING`,
+    [DEFAULT_TENANT_B_ID, "Tenant B"]
+  );
+  await pool.query(
     `INSERT INTO users (id, email, name)
      VALUES ($1, $2, $3)
      ON CONFLICT (id) DO NOTHING`,
     [DEFAULT_USER_ID, DEFAULT_USER_EMAIL, DEFAULT_USER_NAME]
+  );
+  await pool.query(
+    `INSERT INTO users (id, email, name)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (id) DO NOTHING`,
+    [DEFAULT_USER_B_ID, DEFAULT_USER_B_EMAIL, DEFAULT_USER_B_NAME]
   );
   await pool.query(
     `INSERT INTO user_tenants (user_id, tenant_id, role)
@@ -207,21 +270,41 @@ const ensureAnalyticsTables = async () => {
      ON CONFLICT (user_id, tenant_id) DO NOTHING`,
     [DEFAULT_USER_ID, DEFAULT_TENANT_ID, DEFAULT_USER_ROLE]
   );
+  await pool.query(
+    `INSERT INTO user_tenants (user_id, tenant_id, role)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, tenant_id) DO NOTHING`,
+    [DEFAULT_USER_B_ID, DEFAULT_TENANT_B_ID, DEFAULT_USER_B_ROLE]
+  );
+  await pool.query(
+    `UPDATE users
+     SET password_hash = $1, tenant_id = $2, role = $3
+     WHERE id = $4`,
+    [hashPassword(DEFAULT_USER_PASSWORD), DEFAULT_TENANT_ID, DEFAULT_USER_ROLE, DEFAULT_USER_ID]
+  );
+  await pool.query(
+    `UPDATE users
+     SET password_hash = $1, tenant_id = $2, role = $3
+     WHERE id = $4`,
+    [hashPassword(DEFAULT_USER_PASSWORD), DEFAULT_TENANT_B_ID, DEFAULT_USER_B_ROLE, DEFAULT_USER_B_ID]
+  );
 };
 
-pool
-  .connect()
-  .then(async (client) => {
-    console.log("PostgreSQL connected for analytics.");
-    client.release();
-    await ensureAnalyticsTables();
-    console.log("Analytics tables are ready.");
-  })
-  .catch((error) => {
-    console.log("PostgreSQL connection failed:", error);
-  });
+if (process.env.SKIP_DB_INIT !== "1") {
+  pool
+    .connect()
+    .then(async (client) => {
+      console.log("PostgreSQL connected for analytics.");
+      client.release();
+      await ensureAnalyticsTables();
+      console.log("Analytics tables are ready.");
+    })
+    .catch((error) => {
+      console.log("PostgreSQL connection failed:", error);
+    });
+}
 
-const authenticate = (req: Request, res: Response, next: () => void) => {
+const authenticate = async (req: Request, res: Response, next: () => void) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     res.status(401).json({ error: "Unauthorized" });
@@ -237,10 +320,18 @@ const authenticate = (req: Request, res: Response, next: () => void) => {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
+    const membership = await pool.query(
+      `SELECT role FROM user_tenants WHERE user_id = $1 AND tenant_id = $2 LIMIT 1`,
+      [userId, tenantId]
+    );
+    if (!membership.rows[0]) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     (req as Request & { auth?: AuthContext }).auth = {
       user_id: userId,
       tenant_id: tenantId,
-      role,
+      role: membership.rows[0]?.role ?? role,
     };
     next();
   } catch (error) {
@@ -267,13 +358,73 @@ const getAuth = (req: Request): AuthContext => {
   return auth;
 };
 
-const app = express();
+const getTenantScope = (req: Request): string => {
+  const auth = getAuth(req);
+  const override = typeof req.query.tenant_id === "string" ? req.query.tenant_id : null;
+  if (auth.role === "admin" && override) {
+    return override;
+  }
+  return auth.tenant_id;
+};
+
+export const app = express();
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(express.json());
+
+app.post("/auth/login", async (req: Request, res: Response) => {
+  const { email, password, tenant_id } = req.body as {
+    email?: string;
+    password?: string;
+    tenant_id?: string;
+  };
+
+  if (!email || !password) {
+    res.status(400).json({ error: "Email and password are required." });
+    return;
+  }
+
+  try {
+    const userResult = await pool.query(
+      `SELECT id, password_hash FROM users WHERE email = $1 LIMIT 1`,
+      [email]
+    );
+    const user = userResult.rows[0];
+    if (!user || user.password_hash !== hashPassword(password)) {
+      res.status(401).json({ error: "Invalid credentials." });
+      return;
+    }
+
+    const membership = await pool.query(
+      `SELECT tenant_id, role FROM user_tenants WHERE user_id = $1 LIMIT 1`,
+      [user.id]
+    );
+    const tenantRow = membership.rows[0];
+    if (!tenantRow) {
+      res.status(403).json({ error: "No tenant access." });
+      return;
+    }
+    if (tenant_id && tenant_id !== tenantRow.tenant_id) {
+      res.status(403).json({ error: "Tenant access denied." });
+      return;
+    }
+
+    const token = jwt.sign(
+      { tenant_id: tenantRow.tenant_id, role: tenantRow.role },
+      JWT_SECRET,
+      { subject: user.id, expiresIn: "8h" }
+    );
+    res.json({ token, tenant_id: tenantRow.tenant_id, role: tenantRow.role });
+  } catch (error) {
+    console.error("Login failed:", error);
+    res.status(500).json({ error: "Login failed." });
+  }
+});
+
 app.use(["/v1/analytics", "/analytics"], authenticate);
 app.use(["/v1/campaigns", "/campaigns"], authenticate);
 app.use(["/recommend", "/chat", "/events"], authenticate);
+app.use(["/rag"], authenticate);
 
 app.get("/health", async (_req: Request, res: Response) => {
   try {
@@ -324,9 +475,25 @@ app.post("/recommend", async (req: Request, res: Response) => {
   }
 
   try {
+    const campaignId = (campaign as { id?: string }).id;
+    if (campaignId) {
+      const campaignCheck = await pool.query(
+        `SELECT id FROM campaigns WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+        [campaignId, auth.tenant_id]
+      );
+      if (!campaignCheck.rows[0]) {
+        res.status(403).json({ error: "Campaign access denied." });
+        return;
+      }
+    }
+    const headers: Record<string, string> = {};
+    if (req.headers.authorization) {
+      headers.Authorization = req.headers.authorization;
+    }
     const response = await axios.post<RecommendationResponsePayload>(
       `${AI_SERVICE_URL}/recommend`,
-      req.body
+      req.body,
+      { headers }
     );
     const recommendationPayload = response.data;
 
@@ -380,6 +547,7 @@ app.post("/recommend", async (req: Request, res: Response) => {
 });
 
 app.post("/rag/influencers", async (req: Request, res: Response) => {
+  const auth = getAuth(req);
   const { query, top_k } = req.body as { query?: string; top_k?: number };
   if (!query) {
     res.status(400).json({ error: "Invalid payload: query is required." });
@@ -387,7 +555,15 @@ app.post("/rag/influencers", async (req: Request, res: Response) => {
   }
 
   try {
-    const response = await axios.post(`${AI_SERVICE_URL}/rag/influencers`, { query, top_k });
+    const headers: Record<string, string> = {};
+    if (req.headers.authorization) {
+      headers.Authorization = req.headers.authorization;
+    }
+    const response = await axios.post(
+      `${AI_SERVICE_URL}/rag/influencers`,
+      { query, top_k },
+      { headers }
+    );
     res.json(response.data);
   } catch (error) {
     console.log("AI service RAG request failed:", error);
@@ -409,11 +585,19 @@ app.post("/chat", async (req: Request, res: Response) => {
   }
 
   try {
-    const response = await axios.post(`${AI_SERVICE_URL}/chat-strategy`, {
-      campaign,
-      recommendations,
-      question,
-    });
+    const headers: Record<string, string> = {};
+    if (req.headers.authorization) {
+      headers.Authorization = req.headers.authorization;
+    }
+    const response = await axios.post(
+      `${AI_SERVICE_URL}/chat-strategy`,
+      {
+        campaign,
+        recommendations,
+        question,
+      },
+      { headers }
+    );
 
     try {
       await pool.query(
@@ -473,7 +657,7 @@ app.post("/events", async (req: Request, res: Response) => {
 
 app.post(
   "/v1/analytics/event",
-  requireRole(["admin", "analyst"]),
+  requireRole(["admin", "brand_user"]),
   async (req: Request, res: Response) => {
     const auth = getAuth(req);
     const { event_type, campaign_id, influencer_id, metadata } =
@@ -531,13 +715,16 @@ app.get("/v1/campaigns/:id", async (req: Request, res: Response) => {
   return handleCampaignDetail(req, res);
 });
 
-app.post("/campaigns", requireRole(["admin", "analyst"]), async (req: Request, res: Response) => {
+app.post(
+  "/campaigns",
+  requireRole(["admin", "brand_user"]),
+  async (req: Request, res: Response) => {
   return handleCampaignCreate(req, res);
 });
 
 app.post(
   "/v1/campaigns",
-  requireRole(["admin", "analyst"]),
+  requireRole(["admin", "brand_user"]),
   async (req: Request, res: Response) => {
     return handleCampaignCreate(req, res);
   }
@@ -564,7 +751,7 @@ app.get("/v1/analytics/campaign/:campaignId", async (req: Request, res: Response
 });
 
 async function handleAnalyticsSummary(req: Request, res: Response) {
-  const auth = getAuth(req);
+  const tenantScope = getTenantScope(req);
   const windowParam = typeof req.query.window === "string" ? req.query.window : "24h";
   const windowInterval = normalizeWindow(windowParam);
 
@@ -574,14 +761,14 @@ async function handleAnalyticsSummary(req: Request, res: Response) {
        FROM analytics_events
        WHERE tenant_id = $1
          AND created_at >= NOW() - $2::interval`,
-      [auth.tenant_id, windowInterval]
+      [tenantScope, windowInterval]
     );
     const totalRecommendationsResult = await pool.query<{ count: string }>(
       `SELECT COUNT(*) AS count
        FROM recommendation_logs
        WHERE tenant_id = $1
          AND created_at >= NOW() - $2::interval`,
-      [auth.tenant_id, windowInterval]
+      [tenantScope, windowInterval]
     );
     const topGoalsResult = await pool.query<{ goal: string; count: string }>(
       `SELECT metadata->>'goal' AS goal, COUNT(*) AS count
@@ -592,7 +779,7 @@ async function handleAnalyticsSummary(req: Request, res: Response) {
        GROUP BY metadata->>'goal'
        ORDER BY count DESC
        LIMIT 3`,
-      [auth.tenant_id, windowInterval]
+      [tenantScope, windowInterval]
     );
 
     const responseBody: AnalyticsSummaryResponse = {
@@ -614,9 +801,18 @@ async function handleAnalyticsSummary(req: Request, res: Response) {
 
 async function handleCampaignAnalytics(req: Request, res: Response) {
   const { campaignId } = req.params;
-  const auth = getAuth(req);
+  const tenantScope = getTenantScope(req);
 
   try {
+    const campaignCheck = await pool.query(
+      `SELECT id FROM campaigns WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+      [campaignId, tenantScope]
+    );
+    if (!campaignCheck.rows[0]) {
+      res.status(404).json({ error: "Campaign not found." });
+      return;
+    }
+
     const recs = await pool.query<{ count: string }>(
       `
         SELECT COUNT(*) AS count
@@ -624,7 +820,7 @@ async function handleCampaignAnalytics(req: Request, res: Response) {
         WHERE campaign_id = $1
           AND tenant_id = $2
       `,
-      [campaignId, auth.tenant_id]
+      [campaignId, tenantScope]
     );
 
     const events = await pool.query<{ count: string }>(
@@ -634,7 +830,7 @@ async function handleCampaignAnalytics(req: Request, res: Response) {
         WHERE campaign_id = $1
           AND tenant_id = $2
       `,
-      [campaignId, auth.tenant_id]
+      [campaignId, tenantScope]
     );
 
     const kols = await pool.query<{ count: string }>(
@@ -644,7 +840,7 @@ async function handleCampaignAnalytics(req: Request, res: Response) {
         WHERE campaign_id = $1
           AND tenant_id = $2
       `,
-      [campaignId, auth.tenant_id]
+      [campaignId, tenantScope]
     );
 
     const perf = await pool.query<{
@@ -663,7 +859,7 @@ async function handleCampaignAnalytics(req: Request, res: Response) {
         WHERE campaign_id = $1
           AND tenant_id = $2
       `,
-      [campaignId, auth.tenant_id]
+      [campaignId, tenantScope]
     );
 
     const impressions = Number(perf.rows[0]?.impressions ?? 0);
@@ -708,14 +904,14 @@ function normalizeWindow(windowParam: string): string {
 }
 
 async function handleCampaignList(req: Request, res: Response) {
-  const auth = getAuth(req);
+  const tenantScope = getTenantScope(req);
   try {
     const result = await pool.query(
       `SELECT id, brand_name, goal, target_region, target_age_range, budget, description
        FROM campaigns
        WHERE tenant_id = $1
        ORDER BY created_at DESC`,
-      [auth.tenant_id]
+      [tenantScope]
     );
     res.json(result.rows);
   } catch (error) {
@@ -798,7 +994,7 @@ async function handleCampaignCreate(req: Request, res: Response) {
 }
 
 async function handleCampaignDetail(req: Request, res: Response) {
-  const auth = getAuth(req);
+  const tenantScope = getTenantScope(req);
   const { id } = req.params;
   try {
     const result = await pool.query(
@@ -806,7 +1002,7 @@ async function handleCampaignDetail(req: Request, res: Response) {
        FROM campaigns
        WHERE tenant_id = $1 AND id = $2
        LIMIT 1`,
-      [auth.tenant_id, id]
+      [tenantScope, id]
     );
     const campaign = result.rows[0];
     if (!campaign) {
@@ -836,6 +1032,8 @@ async function writeAuditLog(
   }
 }
 
-app.listen(PORT, () => {
-  console.log(`NivoxAI API server listening on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`NivoxAI API server listening on port ${PORT}`);
+  });
+}

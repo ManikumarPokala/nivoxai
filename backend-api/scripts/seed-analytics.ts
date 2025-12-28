@@ -11,6 +11,8 @@ const pool = new Pool({
 
 const tenantId =
   process.env.DEMO_TENANT_ID ?? "00000000-0000-0000-0000-000000000001";
+const tenantBId =
+  process.env.DEMO_TENANT_B_ID ?? "00000000-0000-0000-0000-000000000003";
 const userId =
   process.env.DEMO_USER_ID ?? "00000000-0000-0000-0000-000000000002";
 
@@ -29,6 +31,14 @@ const seedCampaigns = [
     id: "camp-demo-003",
     goal: "Expand cold brew subscriptions",
     region: "Indonesia",
+  },
+];
+
+const seedCampaignsTenantB = [
+  {
+    id: "camp-b-001",
+    goal: "Introduce wellness drinks",
+    region: "Vietnam",
   },
 ];
 
@@ -75,6 +85,37 @@ async function seed() {
           42,
           3500,
           8400,
+        ]
+      );
+    }
+
+    for (const campaign of seedCampaignsTenantB) {
+      await client.query(
+        `INSERT INTO analytics_events (id, user_id, tenant_id, event_type, campaign_id, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          randomUUID(),
+          userId,
+          tenantBId,
+          "campaign_created",
+          campaign.id,
+          { goal: campaign.goal, region: campaign.region },
+        ]
+      );
+
+      await client.query(
+        `INSERT INTO campaign_results
+          (campaign_id, tenant_id, influencer_id, impressions, clicks, conversions, spend, revenue)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          campaign.id,
+          tenantBId,
+          `inf-${campaign.id}`,
+          9000,
+          420,
+          28,
+          2100,
+          5200,
         ]
       );
     }

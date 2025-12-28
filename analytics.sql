@@ -62,6 +62,9 @@ CREATE TABLE users (
   id UUID PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
+  password_hash TEXT NULL,
+  tenant_id UUID NULL REFERENCES tenants(id),
+  role TEXT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -83,6 +86,31 @@ CREATE TABLE campaigns (
   budget NUMERIC(12, 2) NOT NULL,
   description TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE influencers (
+  id TEXT PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  name TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  category TEXT NOT NULL,
+  followers INT NOT NULL,
+  engagement_rate DOUBLE PRECISION NOT NULL,
+  region TEXT NOT NULL,
+  languages TEXT[] NOT NULL,
+  audience_age_range TEXT NOT NULL,
+  bio TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE influencer_documents (
+  id TEXT PRIMARY KEY,
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  influencer_id TEXT NOT NULL REFERENCES influencers(id),
+  content TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  last_active_at TIMESTAMPTZ NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE audit_log (

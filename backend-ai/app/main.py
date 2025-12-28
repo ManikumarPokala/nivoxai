@@ -1,15 +1,19 @@
+import base64
+import hashlib
+import hmac
 import json
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Literal, List
 
 from uuid import uuid4
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.schemas import (
     Campaign,
@@ -22,10 +26,18 @@ from app.services import ingestion, observability
 from app.services.rag import search_influencers
 from app.services.recommender import compute_recommendations
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if os.environ.get("INGESTION_ENABLED", "true").lower() == "true":
+        ingestion.schedule_daily_ingestion()
+    yield
+
 app = FastAPI(
     title="NivoxAI Backend AI Service",
     description="AI microservice for influencer recommendations, RAG search, and agentic strategy generation.",
     version="0.2.0",
+    lifespan=lifespan,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +52,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _base64url_decode(data: str) -> bytes:
+    padding = "=" * (-len(data) % 4)
+    return base64.urlsafe_b64decode(data + padding)
+
+
+def _decode_jwt(token: str) -> dict:
+    try:
+        header_b64, payload_b64, sig_b64 = token.split(".")
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail="Invalid token.") from exc
+
+    secret = os.environ.get("JWT_SECRET", "dev-jwt-secret").encode()
+    signing_input = f"{header_b64}.{payload_b64}".encode()
+    expected_sig = hmac.new(secret, signing_input, hashlib.sha256).digest()
+    actual_sig = _base64url_decode(sig_b64)
+
+    if not hmac.compare_digest(expected_sig, actual_sig):
+        raise HTTPException(status_code=401, detail="Invalid token.")
+
+    payload = json.loads(_base64url_decode(payload_b64))
+    exp = payload.get("exp")
+    if exp and time.time() > exp:
+        raise HTTPException(status_code=401, detail="Token expired.")
+    return payload
+
+
+def require_tenant(request: Request) -> str:
+    auth_header = request.headers.get("authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing tenant context.")
+    token = auth_header.replace("Bearer ", "", 1).strip()
+    payload = _decode_jwt(token)
+    tenant_id = payload.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Missing tenant context.")
+    return tenant_id
 
 
 @app.middleware("http")
@@ -57,6 +107,7 @@ async def request_context_middleware(request, call_next):
             "route": request.url.path,
             "status_code": status_code,
             "latency_ms": latency_ms,
+            "tenant_id": request.headers.get("x-tenant-id"),
         }
         logger.info(json.dumps(log_payload))
         response.headers["X-Request-Id"] = request_id
@@ -130,8 +181,7 @@ class ChatCampaign(BaseModel):
     title: str | None = None
     country: str | None = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class AgentStep(BaseModel):
@@ -237,7 +287,7 @@ def ingestion_status() -> dict:
 
 
 @app.post("/recommend", response_model=RecommendationResponse)
-def recommend(request: RecommendationRequest) -> RecommendationResponse:
+def recommend(request: RecommendationRequest, req: Request) -> RecommendationResponse:
     """
     Main recommendation endpoint.
 
@@ -245,6 +295,7 @@ def recommend(request: RecommendationRequest) -> RecommendationResponse:
     which can internally combine heuristic and ML-based scoring
     for influencer–campaign fit.
     """
+    require_tenant(req)
     return compute_recommendations(request)
 
 
@@ -368,7 +419,7 @@ def sample_recommendation() -> RecommendationResponse:
 
 
 @app.post("/rag/influencers", response_model=list[RagInfluencerHit])
-def rag_influencers(query: RagQuery) -> list[RagInfluencerHit]:
+def rag_influencers(query: RagQuery, request: Request) -> list[RagInfluencerHit]:
     """
     RAG-style influencer search.
 
@@ -376,12 +427,14 @@ def rag_influencers(query: RagQuery) -> list[RagInfluencerHit]:
     influencer documents for a free-text query (e.g. “Thai skincare KOLs”).
     """
 
+    tenant_id = require_tenant(request)
     results: list[tuple[InfluencerDoc, float]] = search_influencers(
         query.query,
         top_k=query.top_k,
         mode=query.mode,
         rerank=query.rerank,
         candidate_k=query.candidate_k,
+        tenant_id=tenant_id,
     )
 
     hits: list[RagInfluencerHit] = [
@@ -398,18 +451,11 @@ def rag_influencers(query: RagQuery) -> list[RagInfluencerHit]:
     return hits
 
 
-@app.on_event("startup")
-def start_ingestion_scheduler() -> None:
-    if os.environ.get("INGESTION_ENABLED", "true").lower() != "true":
-        return
-    ingestion.schedule_daily_ingestion()
-
-
 # --------- STRATEGY / AGENTIC CHAT ---------
 
 
 @app.post("/chat-strategy", response_model=ChatResponse)
-def chat_strategy(req: ChatRequest) -> ChatResponse:
+def chat_strategy(req: ChatRequest, request: Request) -> ChatResponse:
     """
     Strategy endpoint.
 
@@ -421,6 +467,7 @@ def chat_strategy(req: ChatRequest) -> ChatResponse:
     """
 
     request_id = uuid4().hex
+    require_tenant(request)
     start_time = time.perf_counter()
     campaign = req.campaign
     normalized_campaign = {

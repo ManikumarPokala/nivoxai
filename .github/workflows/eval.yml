@@ -23,13 +23,13 @@ jobs:
         env:
           PYTHONPATH: backend-ai
         run: |
-          python -m app.eval.retrieval_eval --dataset docs/eval/datasets/sample.jsonl --k 5,10
+          python eval/run_rag_eval.py --dataset eval/datasets/sample.jsonl --k 5,10
 
       - name: Run ranking eval
         env:
           PYTHONPATH: backend-ai
         run: |
-          python -m app.eval.ranking_eval --dataset docs/eval/datasets/sample.jsonl --k 5,10
+          python eval/run_ranking_eval.py --dataset eval/datasets/sample.jsonl --k 5,10
 
       - name: Upload eval reports
         uses: actions/upload-artifact@v4

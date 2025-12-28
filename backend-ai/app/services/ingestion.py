@@ -22,6 +22,7 @@ def run_ingestion() -> int:
 
     try:
         profiles = _load_profiles()
+        tenant_id = os.environ.get("INGESTION_TENANT_ID")
         docs = [
             rag.InfluencerDoc(
                 id=profile.id,
@@ -29,6 +30,7 @@ def run_ingestion() -> int:
                 bio=profile.bio,
                 category=profile.category,
                 region=profile.region,
+                tenant_id=tenant_id,
             )
             for profile in profiles
         ]
