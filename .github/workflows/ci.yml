@@ -25,7 +25,7 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install -U pip
-          python -m pip install fastapi uvicorn scikit-learn numpy pandas pydantic pytest httpx
+          python -m pip install -r backend-ai/requirements-dev.txt
 
       - name: Compile backend-ai + eval
         run: |

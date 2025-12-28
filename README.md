@@ -39,6 +39,15 @@ Used only for protected demo admin actions (guardrails). Never use in production
 - `make redteam`
 - `bash scripts/ci_smoke.sh`
 
+## Backend-AI tests (local)
+```
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
+python -m pip install -r backend-ai/requirements-dev.txt
+PYTHONPATH=backend-ai python -m pytest -q backend-ai/tests
+```
+
 ## CI notes (public demo-safe)
 - CI runs in demo-safe mode with stubbed keys and `DEMO_MODE=true`.
 - Image push is skipped unless `GHCR_PUSH=true` is configured in GitHub secrets.
