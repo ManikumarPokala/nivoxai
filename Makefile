@@ -34,11 +34,11 @@ db-seed-check:
 
 verify:
 	docker compose up -d --build
-	make test
-	make db-seed-check
+	$(MAKE) test
+	$(MAKE) db-seed-check
 
 onboard:
-	@echo "🚀 Full onboarding: clean → build → verify → seed → eval → demo"
+	@echo "Full onboarding: clean -> build -> verify -> seed -> eval -> demo"
 	docker compose down -v
 	docker compose up -d --build
 	$(MAKE) verify
