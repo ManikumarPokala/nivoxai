@@ -1,6 +1,6 @@
 Offline Evaluation Results
 
-Run date (UTC): 2025-12-28T10:46:56.275280+00:00
+Run date (UTC): 2025-12-28T10:50:03.231025+00:00
 Environment: local docker compose, sample dataset (eval/datasets/sample.jsonl)
 
 | Method | NDCG@10 | MRR@10 | Recall@10 |

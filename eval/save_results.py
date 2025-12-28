@@ -86,17 +86,18 @@ def _aggregate(per_sample: List[Dict[str, float]]) -> Dict[str, float]:
 
 
 def _format_results(results: Dict[str, Dict[str, float]]) -> str:
-    include_timestamp = os.environ.get("INCLUDE_TIMESTAMP") == "1"
+    include_timestamp = os.getenv("INCLUDE_TIMESTAMP") == "1"
     now = datetime.now(timezone.utc).isoformat() if include_timestamp else ""
     lines = [
         "Offline Evaluation Results",
         "",
-        f"Run date (UTC): {now}" if include_timestamp else "Run date (UTC):",
         "Environment: local docker compose, sample dataset (eval/datasets/sample.jsonl)",
         "",
         "| Method | NDCG@10 | MRR@10 | Recall@10 |",
         "| --- | --- | --- | --- |",
     ]
+    if include_timestamp:
+        lines.insert(2, f"Run date (UTC): {now}")
 
     for method, metrics in results.items():
         lines.append(
