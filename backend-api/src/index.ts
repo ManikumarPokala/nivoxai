@@ -456,18 +456,66 @@ const ensureAnalyticsTables = async () => {
   );
 };
 
-if (process.env.SKIP_DB_INIT !== "1") {
-  pool
-    .connect()
-    .then(async (client) => {
+let dbReady = false;
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const isTransientDbError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const err = error as { code?: string; message?: string };
+  const code = err.code ?? "";
+  const message = err.message ?? "";
+  return (
+    code === "ECONNREFUSED" ||
+    code === "ETIMEDOUT" ||
+    code === "57P01" ||
+    code === "57P03" ||
+    code === "53300" ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("ETIMEDOUT") ||
+    message.includes("Connection terminated")
+  );
+};
+
+const initDbWithRetry = async () => {
+  const maxAttempts = 8;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const client = await pool.connect();
       console.log("PostgreSQL connected for analytics.");
       client.release();
       await ensureAnalyticsTables();
       console.log("Analytics tables are ready.");
-    })
-    .catch((error) => {
-      console.log("PostgreSQL connection failed:", error);
-    });
+      dbReady = true;
+      return;
+    } catch (error) {
+      const retryable = isTransientDbError(error);
+      console.log(
+        `PostgreSQL init failed (attempt ${attempt}/${maxAttempts}):`,
+        error
+      );
+      if (!retryable) {
+        console.log("PostgreSQL init failed with non-retryable error.");
+        return;
+      }
+      if (attempt < maxAttempts) {
+        const backoffMs = Math.min(1000 * 2 ** (attempt - 1), 5000);
+        await sleep(backoffMs);
+      }
+    }
+  }
+  console.log("PostgreSQL init failed after max retries.");
+};
+
+if (process.env.SKIP_DB_INIT !== "1") {
+  void initDbWithRetry();
+} else {
+  dbReady = true;
 }
 
 const authenticate = async (req: Request, res: Response, next: () => void) => {
@@ -628,6 +676,10 @@ app.use(["/recommend", "/chat", "/events"], authenticate);
 app.use(["/rag"], authenticate);
 
 app.get("/health", async (req: Request, res: Response) => {
+  if (!dbReady) {
+    res.status(503).json({ error: "Database not ready." });
+    return;
+  }
   try {
     const response = await axios.get<{ status: string }>(`${AI_SERVICE_URL}/health`, {
       headers: buildAiHeaders(req as RequestContext),
@@ -648,6 +700,10 @@ app.get("/health", async (req: Request, res: Response) => {
 });
 
 app.get("/api/healthz", async (req: Request, res: Response) => {
+  if (!dbReady) {
+    res.status(503).json({ error: "Database not ready." });
+    return;
+  }
   try {
     const response = await axios.get(`${AI_SERVICE_URL}/healthz`, {
       headers: buildAiHeaders(req as RequestContext),

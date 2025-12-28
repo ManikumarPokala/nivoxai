@@ -15,12 +15,25 @@ function resolveSecure(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
-  const response = await fetch(`${BACKEND_API_BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: withRequestId({ "Content-Type": "application/json" }, requestId),
-    body: JSON.stringify({ email: "admin@nivoxai.local", password: "demo" }),
-  });
+  const maxAttempts = 5;
+  let response: Response | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    response = await fetch(`${BACKEND_API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: withRequestId({ "Content-Type": "application/json" }, requestId),
+      body: JSON.stringify({ email: "admin@nivoxai.local", password: "demo" }),
+    });
+    if (response.ok || attempt === maxAttempts) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
 
+  if (!response) {
+    return errorResponse(502, requestId, "Demo login failed.", {
+      reason: "Missing response from backend-api.",
+    });
+  }
   if (!response.ok) {
     return relayJsonResponse(response, requestId);
   }
