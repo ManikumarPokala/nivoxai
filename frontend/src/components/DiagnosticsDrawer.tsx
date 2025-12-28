@@ -5,6 +5,7 @@ import {
   getLastRequestError,
   getLastRequestLog,
   getRequestLogs,
+  requestJson,
   subscribeRequestLogs,
   type RequestLog,
 } from "@/lib/apiClient";
@@ -28,6 +29,25 @@ export default function DiagnosticsDrawer({ open, onClose }: DiagnosticsDrawerPr
     token?: string;
   } | null>(null);
 
+  const copyText = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      // ignore clipboard failures
+    }
+  };
+
+  const formatCurl = (log: RequestLog) => {
+    const headerFlags = Object.entries(log.requestHeaders ?? {})
+      .map(([key, value]) => `-H '${key}: ${value}'`)
+      .join(" ");
+    const body =
+      log.requestBody && log.requestBody !== "[binary]" && log.requestBody !== "[form-data]"
+        ? `-d '${JSON.stringify(log.requestBody)}'`
+        : "";
+    return `curl -i -X ${log.method} ${headerFlags} ${body} '${log.path}'`.trim();
+  };
+
   useEffect(() => {
     if (!open) {
       return;
@@ -37,9 +57,16 @@ export default function DiagnosticsDrawer({ open, onClose }: DiagnosticsDrawerPr
     setLastRequest(getLastRequestLog());
     setTokenPresent(Boolean(getAuthToken()));
     setTenantId(getStoredTenantId());
-    fetch("/api/session", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setCookieSession(data))
+    requestJson<{ tenant_id?: string; role?: string | null; token?: string } | { session: null }>(
+      "/api/session"
+    )
+      .then((result) => {
+        if (!result.data || "session" in result.data) {
+          setCookieSession(null);
+          return;
+        }
+        setCookieSession(result.data);
+      })
       .catch(() => setCookieSession(null));
     const unsub = subscribeRequestLogs((items) => {
       setLogs(items);
@@ -108,8 +135,47 @@ export default function DiagnosticsDrawer({ open, onClose }: DiagnosticsDrawerPr
                 {lastRequest.method} {lastRequest.path}
               </p>
               <p>Status: {lastRequest.status || "ERR"}</p>
+              <p>Latency: {lastRequest.durationMs}ms</p>
               <p>Tenant: {lastRequest.tenantId ?? "none"}</p>
               <p>Request ID: {lastRequest.requestId ?? "none"}</p>
+              <div className="mt-2 space-y-2">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                    Request headers
+                  </p>
+                  <pre className="mt-1 max-h-20 overflow-auto rounded-lg bg-slate-50 p-2 text-[11px] text-slate-700">
+                    {JSON.stringify(lastRequest.requestHeaders ?? {}, null, 2)}
+                  </pre>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                    Response headers
+                  </p>
+                  <pre className="mt-1 max-h-20 overflow-auto rounded-lg bg-slate-50 p-2 text-[11px] text-slate-700">
+                    {JSON.stringify(lastRequest.responseHeaders ?? {}, null, 2)}
+                  </pre>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  onClick={() => copyText(formatCurl(lastRequest))}
+                  className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600"
+                >
+                  Copy curl
+                </button>
+                <button
+                  onClick={() => copyText(JSON.stringify(lastRequest.requestBody ?? {}, null, 2))}
+                  className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600"
+                >
+                  Copy request JSON
+                </button>
+                <button
+                  onClick={() => copyText(JSON.stringify(lastRequest.responseBody ?? {}, null, 2))}
+                  className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600"
+                >
+                  Copy response JSON
+                </button>
+              </div>
             </div>
           ) : null}
 
@@ -136,6 +202,26 @@ export default function DiagnosticsDrawer({ open, onClose }: DiagnosticsDrawerPr
                   </div>
                   <div className="mt-1 text-[11px] text-slate-400">
                     tenant: {log.tenantId ?? "none"}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => copyText(formatCurl(log))}
+                      className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600"
+                    >
+                      Copy curl
+                    </button>
+                    <button
+                      onClick={() => copyText(JSON.stringify(log.requestBody ?? {}, null, 2))}
+                      className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600"
+                    >
+                      Req JSON
+                    </button>
+                    <button
+                      onClick={() => copyText(JSON.stringify(log.responseBody ?? {}, null, 2))}
+                      className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600"
+                    >
+                      Res JSON
+                    </button>
                   </div>
                 </div>
               ))

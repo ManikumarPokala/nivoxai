@@ -48,6 +48,20 @@ type AuthContext = {
   role: "admin" | "brand_user" | "viewer";
 };
 
+type ErrorSchema = {
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+    request_id: string;
+  };
+};
+
+type RequestContext = Request & {
+  auth?: AuthContext;
+  request_id?: string;
+};
+
 const AI_SERVICE_URL =
   process.env.AI_SERVICE_BASE_URL ??
   process.env.AI_SERVICE_URL ??
@@ -79,6 +93,19 @@ const DEFAULT_USER_B_EMAIL = process.env.DEMO_USER_B_EMAIL ?? "user@tenantb.loca
 const DEFAULT_USER_B_NAME = process.env.DEMO_USER_B_NAME ?? "Tenant B User";
 const DEFAULT_USER_B_ROLE = process.env.DEMO_USER_B_ROLE ?? "brand_user";
 
+const ERROR_CODE_BY_STATUS: Record<number, string> = {
+  400: "BAD_REQUEST",
+  401: "UNAUTHORIZED",
+  403: "FORBIDDEN",
+  404: "NOT_FOUND",
+  409: "CONFLICT",
+  422: "VALIDATION_ERROR",
+  429: "RATE_LIMITED",
+  502: "UPSTREAM_ERROR",
+  503: "UPSTREAM_UNAVAILABLE",
+  504: "UPSTREAM_TIMEOUT",
+};
+
 export const pool = new Pool({
   host: process.env.PGHOST,
   port: process.env.PGPORT ? Number(process.env.PGPORT) : undefined,
@@ -92,6 +119,82 @@ const hashPassword = (password: string): string => {
     .createHash("sha256")
     .update(`${password}:${JWT_SECRET}`)
     .digest("hex");
+};
+
+const getRequestId = (req: RequestContext): string => {
+  if (req.request_id) {
+    return req.request_id;
+  }
+  const headerId = req.header("x-request-id");
+  const requestId = headerId?.trim();
+  if (requestId) {
+    return requestId;
+  }
+  return randomUUID();
+};
+
+const isErrorSchema = (payload: unknown): payload is ErrorSchema => {
+  if (!payload || typeof payload !== "object") {
+    return false;
+  }
+  const error = (payload as ErrorSchema).error;
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      typeof error.code === "string" &&
+      typeof error.message === "string" &&
+      typeof error.request_id === "string"
+  );
+};
+
+const normalizeErrorPayload = (
+  status: number,
+  payload: unknown,
+  requestId: string
+): ErrorSchema => {
+  if (isErrorSchema(payload)) {
+    return payload;
+  }
+  const code = ERROR_CODE_BY_STATUS[status] ?? "INTERNAL_ERROR";
+  const message =
+    (typeof payload === "object" &&
+      payload !== null &&
+      "message" in payload &&
+      typeof (payload as { message?: unknown }).message === "string" &&
+      (payload as { message?: string }).message) ||
+    (typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof (payload as { error?: unknown }).error === "string" &&
+      (payload as { error?: string }).error) ||
+    (typeof payload === "string" ? payload : "Request failed.");
+  const details =
+    typeof payload === "object" && payload !== null
+      ? payload
+      : payload
+        ? { error: payload }
+        : undefined;
+  return {
+    error: {
+      code,
+      message,
+      details,
+      request_id: requestId,
+    },
+  };
+};
+
+const buildAiHeaders = (req: RequestContext): Record<string, string> => {
+  const headers: Record<string, string> = {
+    "x-request-id": getRequestId(req),
+  };
+  if (req.headers.authorization) {
+    headers.Authorization = req.headers.authorization;
+  }
+  if (req.headers["x-tenant-id"]) {
+    headers["X-Tenant-Id"] = String(req.headers["x-tenant-id"]);
+  }
+  return headers;
 };
 
 const ensureAnalyticsTables = async () => {
@@ -370,6 +473,38 @@ const getTenantScope = (req: Request): string => {
 
 export const app = express();
 app.use(cors(corsOptions));
+app.use((req: RequestContext, res: Response, next) => {
+  const requestId = getRequestId(req);
+  req.request_id = requestId;
+  res.setHeader("x-request-id", requestId);
+
+  const start = Date.now();
+  const originalJson = res.json.bind(res);
+  res.json = (body) => {
+    if (res.statusCode >= 400) {
+      return originalJson(normalizeErrorPayload(res.statusCode, body, requestId));
+    }
+    return originalJson(body);
+  };
+
+  res.on("finish", () => {
+    const latencyMs = Math.max(1, Date.now() - start);
+    const auth = (req as RequestContext).auth;
+    console.log(
+      JSON.stringify({
+        request_id: requestId,
+        tenant_id: auth?.tenant_id ?? null,
+        role: auth?.role ?? null,
+        method: req.method,
+        path: req.originalUrl,
+        status: res.statusCode,
+        latency_ms: latencyMs,
+      })
+    );
+  });
+
+  next();
+});
 app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 
@@ -427,9 +562,11 @@ app.use(["/v1/campaigns", "/campaigns"], authenticate);
 app.use(["/recommend", "/chat", "/events"], authenticate);
 app.use(["/rag"], authenticate);
 
-app.get("/health", async (_req: Request, res: Response) => {
+app.get("/health", async (req: Request, res: Response) => {
   try {
-    const response = await axios.get<{ status: string }>(`${AI_SERVICE_URL}/health`);
+    const response = await axios.get<{ status: string }>(`${AI_SERVICE_URL}/health`, {
+      headers: buildAiHeaders(req as RequestContext),
+    });
     res.json({
       status: "ok",
       api: "up",
@@ -445,9 +582,11 @@ app.get("/health", async (_req: Request, res: Response) => {
   }
 });
 
-app.get("/api/healthz", async (_req: Request, res: Response) => {
+app.get("/api/healthz", async (req: Request, res: Response) => {
   try {
-    const response = await axios.get(`${AI_SERVICE_URL}/healthz`);
+    const response = await axios.get(`${AI_SERVICE_URL}/healthz`, {
+      headers: buildAiHeaders(req as RequestContext),
+    });
     res.status(response.status).json(response.data);
   } catch (error) {
     console.log("AI service /healthz failed:", error);
@@ -455,9 +594,11 @@ app.get("/api/healthz", async (_req: Request, res: Response) => {
   }
 });
 
-app.get("/api/model/status", async (_req: Request, res: Response) => {
+app.get("/api/model/status", async (req: Request, res: Response) => {
   try {
-    const response = await axios.get(`${AI_SERVICE_URL}/v1/model/status`);
+    const response = await axios.get(`${AI_SERVICE_URL}/v1/model/status`, {
+      headers: buildAiHeaders(req as RequestContext),
+    });
     res.status(response.status).json(response.data);
   } catch (error) {
     console.log("AI service model status failed:", error);
@@ -487,13 +628,7 @@ app.post("/recommend", async (req: Request, res: Response) => {
         return;
       }
     }
-    const headers: Record<string, string> = {};
-    if (req.headers.authorization) {
-      headers.Authorization = req.headers.authorization;
-    }
-    if (req.headers["x-tenant-id"]) {
-      headers["X-Tenant-Id"] = String(req.headers["x-tenant-id"]);
-    }
+    const headers = buildAiHeaders(req as RequestContext);
     const response = await axios.post<RecommendationResponsePayload>(
       `${AI_SERVICE_URL}/recommend`,
       req.body,
@@ -559,13 +694,7 @@ app.post("/rag/influencers", async (req: Request, res: Response) => {
   }
 
   try {
-    const headers: Record<string, string> = {};
-    if (req.headers.authorization) {
-      headers.Authorization = req.headers.authorization;
-    }
-    if (req.headers["x-tenant-id"]) {
-      headers["X-Tenant-Id"] = String(req.headers["x-tenant-id"]);
-    }
+    const headers = buildAiHeaders(req as RequestContext);
     const response = await axios.post(
       `${AI_SERVICE_URL}/rag/influencers`,
       { query, top_k },
@@ -592,13 +721,7 @@ app.post("/chat", async (req: Request, res: Response) => {
   }
 
   try {
-    const headers: Record<string, string> = {};
-    if (req.headers.authorization) {
-      headers.Authorization = req.headers.authorization;
-    }
-    if (req.headers["x-tenant-id"]) {
-      headers["X-Tenant-Id"] = String(req.headers["x-tenant-id"]);
-    }
+    const headers = buildAiHeaders(req as RequestContext);
     const response = await axios.post(
       `${AI_SERVICE_URL}/chat-strategy`,
       {
@@ -1041,6 +1164,31 @@ async function writeAuditLog(
     console.log("Failed to write audit log:", error);
   }
 }
+
+app.use((req: Request, res: Response) => {
+  const requestId = getRequestId(req as RequestContext);
+  res.status(404).json({
+    error: {
+      code: "NOT_FOUND",
+      message: "Route not found.",
+      details: { path: req.originalUrl },
+      request_id: requestId,
+    },
+  });
+});
+
+app.use((err: Error, req: Request, res: Response, _next: () => void) => {
+  const requestId = getRequestId(req as RequestContext);
+  console.error("Unhandled error:", err);
+  res.status(500).json({
+    error: {
+      code: "INTERNAL_ERROR",
+      message: "Unexpected server error.",
+      details: { error: err.message },
+      request_id: requestId,
+    },
+  });
+});
 
 if (require.main === module) {
   app.listen(PORT, () => {

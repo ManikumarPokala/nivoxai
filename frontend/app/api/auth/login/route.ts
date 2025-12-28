@@ -1,20 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { BACKEND_API_BASE_URL } from "@/lib/urls";
+import { errorResponse, getRequestId, relayJsonResponse, withRequestId } from "../../_utils/proxy";
 
 export async function POST(request: NextRequest) {
+  const requestId = getRequestId(request);
   try {
     const body = await request.json();
     const response = await fetch(`${BACKEND_API_BASE_URL}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: withRequestId({ "Content-Type": "application/json" }, requestId),
       body: JSON.stringify(body),
     });
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    return relayJsonResponse(response, requestId);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Auth proxy failed." },
-      { status: 502 }
-    );
+    const message = error instanceof Error ? error.message : "Auth proxy failed.";
+    return errorResponse(502, requestId, "Auth proxy failed.", { error: message });
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "./ui/utils";
@@ -13,6 +13,7 @@ import {
   subscribeAuth,
   syncSessionFromCookies,
 } from "@/lib/auth";
+import { requestJson } from "@/lib/apiClient";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -28,6 +29,8 @@ export default function AppShell({ children }: AppShellProps) {
   );
   const [sessionTenant, setSessionTenant] = useState<string | null>(getStoredTenantId());
   const [sessionRole, setSessionRole] = useState<string | null>(null);
+  const initRef = useRef(false);
+  const loginInFlightRef = useRef(false);
   const { locale, setLocale, t } = useI18n();
   const gitSha = process.env.NEXT_PUBLIC_GIT_SHA ?? "dev";
 
@@ -37,6 +40,8 @@ export default function AppShell({ children }: AppShellProps) {
     { label: t("nav_discovery"), href: "/discovery" },
     { label: t("nav_analytics"), href: "/analytics" },
     { label: t("nav_settings"), href: "/settings" },
+    { label: "QA Ops", href: "/qa/ops" },
+    { label: "QA Auth", href: "/qa/auth" },
   ];
 
   const titleMap: Record<string, string> = {
@@ -67,28 +72,48 @@ export default function AppShell({ children }: AppShellProps) {
   }, []);
 
   async function ensureSession() {
+    if (sessionStatus === "ready" || loginInFlightRef.current) {
+      return;
+    }
+    loginInFlightRef.current = true;
     setSessionStatus("bootstrapping");
     const existing = await syncSessionFromCookies();
     if (existing?.tenant_id) {
       setSessionTenant(existing.tenant_id);
       setSessionRole(existing.role ?? null);
       setSessionStatus("ready");
+      loginInFlightRef.current = false;
       return;
+    }
+    if (typeof window !== "undefined") {
+      const lastAttempt = Number(window.sessionStorage.getItem("nivoxai_demo_login_at") ?? "0");
+      if (lastAttempt && Date.now() - lastAttempt < 30_000) {
+        setSessionStatus("missing");
+        loginInFlightRef.current = false;
+        return;
+      }
+      window.sessionStorage.setItem("nivoxai_demo_login_at", String(Date.now()));
     }
     const demo = await bootstrapDemoSession();
     if (demo?.tenant_id) {
       setSessionTenant(demo.tenant_id);
       setSessionRole(demo.role ?? null);
       setSessionStatus("ready");
+      loginInFlightRef.current = false;
       return;
     }
     setSessionStatus("missing");
+    loginInFlightRef.current = false;
   }
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
+    if (initRef.current) {
+      return;
+    }
+    initRef.current = true;
     void ensureSession();
   }, []);
 
@@ -200,7 +225,7 @@ export default function AppShell({ children }: AppShellProps) {
                 <button
                   type="button"
                   onClick={async () => {
-                    await fetch("/api/session", { method: "DELETE" });
+                    await requestJson("/api/session", { method: "DELETE" });
                     setSessionStatus("missing");
                     void ensureSession();
                   }}

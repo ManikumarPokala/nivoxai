@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { errorResponse } from "./proxy";
 
 export type SessionContext = {
   token: string;
@@ -18,19 +19,14 @@ export async function getSessionFromCookies(): Promise<SessionContext | null> {
   return { token, tenantId, role };
 }
 
-export async function requireSession() {
+export async function requireSession(requestId: string) {
   const session = await getSessionFromCookies();
   if (!session) {
     return {
       session: null,
-      error: NextResponse.json(
-        {
-          code: "SESSION_MISSING",
-          message: "Session missing. Start a demo session to continue.",
-          action: "start_demo_session",
-        },
-        { status: 401 }
-      ),
+      error: errorResponse(401, requestId, "Session missing. Start a demo session to continue.", {
+        action: "start_demo_session",
+      }),
     };
   }
   return { session, error: null };

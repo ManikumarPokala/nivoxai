@@ -1,26 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { BACKEND_API_BASE_URL } from "@/lib/urls";
 import { buildAuthHeaders, requireSession } from "../_utils/session";
+import { errorResponse, getRequestId, relayJsonResponse, withRequestId } from "../_utils/proxy";
 
 export async function POST(request: NextRequest) {
-  const { session, error } = await requireSession();
+  const requestId = getRequestId(request);
+  const { session, error } = await requireSession(requestId);
   if (error || !session) {
     return error;
   }
   try {
     const body = await request.json();
-    const headers = buildAuthHeaders(session, { "Content-Type": "application/json" });
+    const headers = buildAuthHeaders(
+      session,
+      withRequestId({ "Content-Type": "application/json" }, requestId)
+    );
     const response = await fetch(`${BACKEND_API_BASE_URL}/chat`, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
     });
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    return relayJsonResponse(response, requestId);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Strategy proxy failed." },
-      { status: 502 }
-    );
+    const message = error instanceof Error ? error.message : "Strategy proxy failed.";
+    return errorResponse(502, requestId, "Strategy proxy failed.", { error: message });
   }
 }

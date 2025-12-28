@@ -12,7 +12,9 @@ from typing import Literal, List
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.schemas import (
@@ -90,12 +92,14 @@ def require_tenant(request: Request) -> str:
     tenant_id = payload.get("tenant_id")
     if not tenant_id:
         raise HTTPException(status_code=401, detail="Missing tenant context.")
+    request.state.tenant_id = tenant_id
     return tenant_id
 
 
 @app.middleware("http")
 async def request_context_middleware(request, call_next):
     request_id = request.headers.get("x-request-id") or uuid4().hex
+    request.state.request_id = request_id
     start = time.perf_counter()
     try:
         response = await call_next(request)
@@ -108,13 +112,21 @@ async def request_context_middleware(request, call_next):
             "route": request.url.path,
             "status_code": status_code,
             "latency_ms": latency_ms,
-            "tenant_id": request.headers.get("x-tenant-id"),
+            "tenant_id": getattr(request.state, "tenant_id", None),
         }
+        fallback_used = getattr(request.state, "fallback_used", None)
+        if fallback_used is not None:
+            log_payload["fallback_used"] = fallback_used
         logger.info(json.dumps(log_payload))
         response.headers["X-Request-Id"] = request_id
         return response
-    except Exception:
-        status_code = 500
+    except Exception as exc:
+        if isinstance(exc, RequestValidationError):
+            status_code = 422
+        elif isinstance(exc, HTTPException):
+            status_code = exc.status_code
+        else:
+            status_code = 500
         latency_ms = max(1, int(round((time.perf_counter() - start) * 1000)))
         observability.record_request(request.url.path, status_code, latency_ms)
         log_payload = {
@@ -126,6 +138,75 @@ async def request_context_middleware(request, call_next):
         }
         logger.info(json.dumps(log_payload))
         raise
+
+
+def _error_response(
+    status_code: int,
+    code: str,
+    message: str,
+    request_id: str,
+    details: dict | None = None,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": {
+                "code": code,
+                "message": message,
+                "details": details,
+                "request_id": request_id,
+            }
+        },
+        headers={"x-request-id": request_id},
+    )
+
+
+def _code_for_status(status_code: int) -> str:
+    return {
+        400: "BAD_REQUEST",
+        401: "UNAUTHORIZED",
+        403: "FORBIDDEN",
+        404: "NOT_FOUND",
+        409: "CONFLICT",
+        422: "VALIDATION_ERROR",
+        429: "RATE_LIMITED",
+        502: "UPSTREAM_ERROR",
+        503: "UPSTREAM_UNAVAILABLE",
+        504: "UPSTREAM_TIMEOUT",
+    }.get(status_code, "INTERNAL_ERROR")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    request_id = getattr(request.state, "request_id", None) or uuid4().hex
+    return _error_response(
+        422,
+        "VALIDATION_ERROR",
+        "Invalid request payload.",
+        request_id,
+        {"errors": exc.errors()},
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    request_id = getattr(request.state, "request_id", None) or uuid4().hex
+    details = exc.detail if isinstance(exc.detail, dict) else None
+    message = exc.detail if isinstance(exc.detail, str) else "Request failed."
+    return _error_response(exc.status_code, _code_for_status(exc.status_code), message, request_id, details)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    request_id = getattr(request.state, "request_id", None) or uuid4().hex
+    logger.exception("Unhandled exception")
+    return _error_response(
+        500,
+        "INTERNAL_ERROR",
+        "Unexpected server error.",
+        request_id,
+        {"error": str(exc)},
+    )
 
 
 # --------- RAG MODELS ---------
@@ -467,7 +548,7 @@ def chat_strategy(req: ChatRequest, request: Request) -> ChatResponse:
     - Produces a structured, actionable KOL campaign strategy.
     """
 
-    request_id = uuid4().hex
+    request_id = getattr(request.state, "request_id", None) or uuid4().hex
     require_tenant(request)
     start_time = time.perf_counter()
     campaign = req.campaign
@@ -495,6 +576,7 @@ def chat_strategy(req: ChatRequest, request: Request) -> ChatResponse:
             recommendations=recs,
             user_question=req.question,
         )
+        request.state.fallback_used = result.get("fallback_used", False)
         runner.LAST_RUN_AT = datetime.now(timezone.utc).isoformat()
         runner.LAST_ERROR = None
         logger.info("Agent state updated: last_run_at=%s", runner.LAST_RUN_AT)

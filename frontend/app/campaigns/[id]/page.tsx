@@ -43,6 +43,7 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
   const router = useRouter();
   const searchParams = useSearchParams();
   const campaignId = params.id;
+  const isValidCampaignId = Boolean(campaignId && campaignId !== "undefined");
   const [campaign, setCampaign] = useState<CampaignInput | null>(null);
   const [campaignError, setCampaignError] = useState<string | null>(null);
   const [campaignStatus, setCampaignStatus] = useState<number | null>(null);
@@ -87,6 +88,15 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
 
   useEffect(() => {
     let active = true;
+    if (!isValidCampaignId) {
+      setCampaign(null);
+      setCampaignError("Select a campaign to view details.");
+      setCampaignStatus(400);
+      setIsCampaignLoading(false);
+      return () => {
+        active = false;
+      };
+    }
     setIsCampaignLoading(true);
     getCampaignById(campaignId).then((result) => {
       if (!active) {
@@ -108,6 +118,9 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
     if (typeof window === "undefined") {
       return;
     }
+    if (!isValidCampaignId) {
+      return;
+    }
     const stored = window.localStorage.getItem(`strategy:${campaignId}`);
     if (stored) {
       try {
@@ -120,6 +133,14 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
 
   useEffect(() => {
     let active = true;
+    if (!isValidCampaignId) {
+      setCampaignAnalytics(null);
+      setAnalyticsError("Select a campaign to view analytics.");
+      setAnalyticsStatus(400);
+      return () => {
+        active = false;
+      };
+    }
     getCampaignAnalytics(campaignId).then((result) => {
       if (!active) {
         return;
@@ -136,7 +157,7 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
   }, [campaignId]);
 
   useEffect(() => {
-    if (!sessionActive) {
+    if (!sessionActive || !isValidCampaignId) {
       return;
     }
     const interval = setInterval(() => {
@@ -152,7 +173,7 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
     return () => {
       clearInterval(interval);
     };
-  }, [campaignId, sessionActive]);
+  }, [campaignId, sessionActive, isValidCampaignId]);
 
   const tabs = [
     { label: t("tab_overview"), value: "overview" },
@@ -329,6 +350,11 @@ export default function CampaignDetailPage({ params }: CampaignDetailPageProps) 
   }
 
   async function refreshAnalytics() {
+    if (!isValidCampaignId) {
+      setAnalyticsError("Select a campaign to view analytics.");
+      setAnalyticsStatus(400);
+      return;
+    }
     const result = await getCampaignAnalytics(campaignId);
     setCampaignAnalytics(result.data);
     setLastUpdated(new Date().toLocaleTimeString());

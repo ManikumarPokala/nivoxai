@@ -1,23 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { BACKEND_API_BASE_URL } from "@/lib/urls";
 import { buildAuthHeaders, requireSession } from "../../_utils/session";
+import { errorResponse, getRequestId, relayJsonResponse, withRequestId } from "../../_utils/proxy";
 
-export async function GET() {
-  const { session, error } = await requireSession();
+export async function GET(request: NextRequest) {
+  const requestId = getRequestId(request);
+  const { session, error } = await requireSession(requestId);
   if (error || !session) {
     return error;
   }
   try {
     const response = await fetch(`${BACKEND_API_BASE_URL}/api/model/status`, {
       cache: "no-store",
-      headers: buildAuthHeaders(session),
+      headers: buildAuthHeaders(session, withRequestId({}, requestId)),
     });
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    return relayJsonResponse(response, requestId);
   } catch (error) {
-    return NextResponse.json(
-      { error: "Model status proxy failed." },
-      { status: 502 }
-    );
+    const message = error instanceof Error ? error.message : "Model status proxy failed.";
+    return errorResponse(502, requestId, "Model status proxy failed.", { error: message });
   }
 }

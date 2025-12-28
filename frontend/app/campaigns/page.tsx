@@ -321,7 +321,7 @@ function normalizeCampaignItem(payload: CampaignItemPayload): CampaignInput | nu
     return base;
   }
   const id = base.id ?? base.campaign_id;
-  if (!id) {
+  if (!id || id === "undefined") {
     return null;
   }
   return {

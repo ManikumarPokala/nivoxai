@@ -1,10 +1,11 @@
+import { requestJson } from "@/lib/apiClient";
+
 type TokenPayload = {
   sub?: string;
   tenant_id?: string;
   role?: string;
   exp?: number;
 };
-
 type AuthListener = (token: string | null) => void;
 export type Unsubscribe = () => void;
 
@@ -70,16 +71,16 @@ export async function syncSessionFromCookies() {
   if (typeof window === "undefined") {
     return null;
   }
-  const response = await fetch("/api/session", { cache: "no-store" });
-  if (!response.ok) {
-    return null;
-  }
-  const data = (await response.json()) as {
+  const result = await requestJson<{
     token?: string;
     tenant_id?: string;
     role?: string | null;
     session?: null;
-  };
+  }>("/api/session", { method: "GET" });
+  if (result.error || !result.data) {
+    return null;
+  }
+  const data = result.data;
   if (!data?.token || !data?.tenant_id) {
     return null;
   }
@@ -91,15 +92,15 @@ export async function bootstrapDemoSession() {
   if (typeof window === "undefined") {
     return null;
   }
-  const loginResponse = await fetch("/api/auth/demo", { method: "POST" });
-  if (!loginResponse.ok) {
-    return null;
-  }
-  const loginData = (await loginResponse.json()) as {
+  const loginResult = await requestJson<{
     token?: string;
     tenant_id?: string;
     role?: string;
-  };
+  }>("/api/auth/demo", { method: "POST" });
+  if (loginResult.error || !loginResult.data) {
+    return null;
+  }
+  const loginData = loginResult.data;
   if (!loginData.token || !loginData.tenant_id) {
     return null;
   }

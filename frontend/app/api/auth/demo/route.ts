@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BACKEND_API_BASE_URL } from "@/lib/urls";
+import { errorResponse, getRequestId, relayJsonResponse, withRequestId } from "../../_utils/proxy";
 
 function resolveSecure(request: NextRequest) {
   if (process.env.NEXT_PUBLIC_FORCE_HTTPS === "true") {
@@ -13,17 +14,15 @@ function resolveSecure(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = getRequestId(request);
   const response = await fetch(`${BACKEND_API_BASE_URL}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withRequestId({ "Content-Type": "application/json" }, requestId),
     body: JSON.stringify({ email: "admin@nivoxai.local", password: "demo" }),
   });
 
   if (!response.ok) {
-    return NextResponse.json(
-      { error: "Demo login failed." },
-      { status: response.status }
-    );
+    return relayJsonResponse(response, requestId);
   }
 
   const data = (await response.json()) as {
@@ -33,9 +32,14 @@ export async function POST(request: NextRequest) {
   };
 
   if (!data.token || !data.tenant_id) {
-    return NextResponse.json(
-      { error: "Demo login missing token or tenant_id." },
-      { status: 500 }
+    return errorResponse(
+      500,
+      requestId,
+      "Demo login missing token or tenant_id.",
+      {
+        token_present: Boolean(data.token),
+        tenant_present: Boolean(data.tenant_id),
+      }
     );
   }
 
@@ -60,5 +64,6 @@ export async function POST(request: NextRequest) {
       httpOnly: false,
     });
   }
+  nextResponse.headers.set("x-request-id", requestId);
   return nextResponse;
 }

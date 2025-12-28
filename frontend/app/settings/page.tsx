@@ -13,6 +13,7 @@ import {
   type AgentStatus,
   type ModelStatus,
 } from "@/lib/api";
+import { requestJson } from "@/lib/apiClient";
 import { AI_BASE_URL, API_BASE_URL } from "@/lib/urls";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -102,12 +103,11 @@ export default function SettingsPage() {
       pushToast({ title: "Login failed", description: result.error ?? "Auth failed.", variant: "error" });
       return;
     }
-    const sessionResponse = await fetch("/api/session", {
+    const sessionResponse = await requestJson("/api/session", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(result.data),
     });
-    if (!sessionResponse.ok) {
+    if (sessionResponse.error) {
       pushToast({ title: "Session failed", description: "Could not persist session.", variant: "error" });
       return;
     }
@@ -217,12 +217,11 @@ export default function SettingsPage() {
                       });
                       return;
                     }
-                    const response = await fetch("/api/session", {
+                    const response = await requestJson("/api/session", {
                       method: "POST",
-                      headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ token: nextToken, tenant_id: nextTenant, role }),
                     });
-                    if (!response.ok) {
+                    if (response.error) {
                       pushToast({
                         title: "Session failed",
                         description: "Could not persist session.",
@@ -236,13 +235,16 @@ export default function SettingsPage() {
                 >
                   Save session
                 </Button>
-                <Button variant="ghost" onClick={async () => {
-                  await fetch("/api/session", { method: "DELETE" });
-                  clearAuthToken();
-                  clearStoredTenantId();
-                  setTokenInput("");
-                  setTenantInput("");
-                }}>
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    await requestJson("/api/session", { method: "DELETE" });
+                    clearAuthToken();
+                    clearStoredTenantId();
+                    setTokenInput("");
+                    setTenantInput("");
+                  }}
+                >
                   Clear token
                 </Button>
               </div>
