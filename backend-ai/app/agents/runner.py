@@ -70,11 +70,43 @@ def run_strategy_agent(
     LAST_RUN_AT = _now_iso()
 
     try:
+        policy_blocks: List[str] = []
+        sanitized_campaign, campaign_blocks = tools.sanitize_campaign(campaign)
+        sanitized_recs, rec_blocks = tools.sanitize_recommendations(recommendations)
+        sanitized_question, question_blocks = (
+            tools.sanitize_text(user_question) if user_question else (user_question, [])
+        )
+        policy_blocks.extend(campaign_blocks)
+        policy_blocks.extend(rec_blocks)
+        policy_blocks.extend(question_blocks)
+
+        trace.append(
+            {
+                "name": "policy",
+                "summary": "Applied prompt-injection defenses to untrusted content.",
+                "latency_ms": 1,
+                "tool_input": {
+                    "blocked_count": len(policy_blocks),
+                    "user_question_present": bool(user_question),
+                },
+                "tool_output": {"blocked_instructions": policy_blocks},
+                "replanned": False,
+            }
+        )
+
         # Plan step
         t0 = time.perf_counter()
-        constraints = tools.extract_constraints(campaign)
-        rec_summary = tools.summarize_recommendations(recommendations)
-        plan = planner.build_plan(constraints, rec_summary, user_question)
+        tools.validate_tool_call("extract_constraints", {"campaign": sanitized_campaign})
+        constraints = tools.extract_constraints(sanitized_campaign)
+        tools.validate_tool_call(
+            "summarize_recommendations", {"recommendations": sanitized_recs}
+        )
+        rec_summary = tools.summarize_recommendations(sanitized_recs)
+        tools.validate_tool_call(
+            "build_plan",
+            {"campaign": constraints, "rec_summary": rec_summary, "user_question": sanitized_question},
+        )
+        plan = planner.build_plan(constraints, rec_summary, sanitized_question)
         t1 = time.perf_counter()
         ms = (t1 - t0) * 1000
         trace.append(
@@ -85,7 +117,7 @@ def run_strategy_agent(
                 "tool_input": {
                     "constraints": constraints,
                     "rec_summary": rec_summary,
-                    "user_question": user_question,
+                    "user_question": sanitized_question,
                 },
                 "tool_output": plan,
                 "replanned": False,
@@ -99,9 +131,9 @@ def run_strategy_agent(
             model_used = os.environ.get("OPENAI_MODEL")
             try:
                 draft = generate_strategy_reply(
-                    campaign=campaign,
-                    recommendations=recommendations,
-                    user_question=user_question,
+                    campaign=sanitized_campaign,
+                    recommendations=sanitized_recs,
+                    user_question=sanitized_question,
                 )
                 observability.record_llm_call(True)
             except Exception:
@@ -118,9 +150,9 @@ def run_strategy_agent(
                 "summary": "Generated strategy draft.",
                 "latency_ms": max(1, int(round(ms))),
                 "tool_input": {
-                    "campaign_id": campaign.get("id"),
-                    "recommendations_count": len(recommendations),
-                    "user_question": user_question,
+                    "campaign_id": sanitized_campaign.get("id"),
+                    "recommendations_count": len(sanitized_recs),
+                    "user_question": sanitized_question,
                 },
                 "tool_output": {
                     "model": model_used,
@@ -132,13 +164,14 @@ def run_strategy_agent(
 
         # Review step
         t0 = time.perf_counter()
-        ok, issues = reviewer.review_draft(draft, campaign)
+        tools.validate_tool_call("review_draft", {"campaign": sanitized_campaign, "draft": draft})
+        ok, issues = reviewer.review_draft(draft, sanitized_campaign)
         replanned = False
         if not ok:
             fixes = "\n".join([f"- {issue}" for issue in issues])
             draft = f"{draft}\n\nFixes:\n{fixes}"
             replanned = True
-            ok, issues = reviewer.review_draft(draft, campaign)
+            ok, issues = reviewer.review_draft(draft, sanitized_campaign)
         if not ok:
             draft = _build_deterministic_reply(plan, rec_summary)
             fallback_used = True

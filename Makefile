@@ -8,6 +8,9 @@ eval-ranking:
 eval-rag:
 	python eval/run_rag_eval.py --dataset eval/datasets/sample.jsonl --k 5,10
 
+redteam:
+	python eval/run_redteam.py
+
 eval-save:
 	docker compose up -d backend-ai
 	docker exec -i nivoxai-backend-ai sh -c "PYTHONPATH=/app python /app/eval/save_results.py && cat /app/eval/results.md" > eval/results.md
@@ -29,13 +32,14 @@ test: test-api test-ai
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check-shell-mistake db-seed-check onboard verify check-onboard eval-save demo test test-api test-ai db-seed
+.PHONY: help check-shell-mistake db-seed-check onboard verify check-onboard eval-save demo test test-api test-ai db-seed redteam
 
 help:
 	@echo "make onboard        # full clean flow"
 	@echo "make verify         # fast check"
 	@echo "make db-seed        # seed analytics"
 	@echo "make demo           # run demo"
+	@echo "make redteam        # agent safety checks"
 	@echo "make check-onboard  # guidance only"
 	@echo "Do not paste Makefile lines into zsh; run: make <target>"
 
