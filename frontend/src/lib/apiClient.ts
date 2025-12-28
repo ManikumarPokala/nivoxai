@@ -13,6 +13,10 @@ export type RequestLog = {
   durationMs: number;
   requestId: string | null;
   tenantId: string | null;
+  requestHeaders: Record<string, string>;
+  responseHeaders: Record<string, string>;
+  requestBody: unknown | null;
+  responseBody: unknown | null;
   error?: string | null;
   time: string;
 };
@@ -80,6 +84,7 @@ export async function requestJson<T>(
   const method = options.method ?? "GET";
   const headers = new Headers(options.headers ?? {});
   const tenantId = getStoredTenantId();
+  const requestBody = normalizeRequestBody(options.body);
 
   if (!headers.has("Content-Type") && options.body) {
     headers.set("Content-Type", "application/json");
@@ -100,10 +105,12 @@ export async function requestJson<T>(
       1,
       Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - start)
     );
-    const responseRequestId = response.headers.get("x-request-id");
+    const responseHeaders = headersToObject(response.headers);
+    const responseRequestId = responseHeaders["x-request-id"] ?? null;
+    const responseBody = await safeReadBody(response);
 
     if (!response.ok) {
-      const message = await safeReadError(response);
+      const message = extractErrorMessage(responseBody, response.status, response.statusText);
       recordLog({
         id: requestId,
         method,
@@ -112,6 +119,10 @@ export async function requestJson<T>(
         durationMs,
         requestId: responseRequestId,
         tenantId,
+        requestHeaders: headersToObject(headers),
+        responseHeaders,
+        requestBody,
+        responseBody,
         error: message,
         time: new Date().toISOString(),
       });
@@ -123,7 +134,7 @@ export async function requestJson<T>(
       };
     }
 
-    const data = (await response.json()) as T;
+    const data = responseBody as T;
     recordLog({
       id: requestId,
       method,
@@ -132,6 +143,10 @@ export async function requestJson<T>(
       durationMs,
       requestId: responseRequestId,
       tenantId,
+      requestHeaders: headersToObject(headers),
+      responseHeaders,
+      requestBody,
+      responseBody,
       error: null,
       time: new Date().toISOString(),
     });
@@ -155,6 +170,10 @@ export async function requestJson<T>(
       durationMs,
       requestId: null,
       tenantId,
+      requestHeaders: headersToObject(headers),
+      responseHeaders: {},
+      requestBody,
+      responseBody: null,
       error: message,
       time: new Date().toISOString(),
     });
@@ -164,14 +183,59 @@ export async function requestJson<T>(
   }
 }
 
-async function safeReadError(response: Response): Promise<string> {
-  try {
-    const data = await response.json();
-    if (data?.error) {
-      return data.error;
-    }
-  } catch {
-    // ignore parse errors
+async function safeReadBody(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) {
+    return null;
   }
-  return `Request failed (${response.status} ${response.statusText})`;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function extractErrorMessage(
+  body: unknown,
+  status: number,
+  statusText: string
+): string {
+  if (body && typeof body === "object") {
+    const error = (body as { error?: { message?: string } }).error;
+    if (error?.message) {
+      return error.message;
+    }
+    const message = (body as { message?: string }).message;
+    if (message) {
+      return message;
+    }
+  }
+  if (typeof body === "string") {
+    return body;
+  }
+  return `Request failed (${status} ${statusText})`;
+}
+
+function normalizeRequestBody(body: RequestInit["body"]): unknown | null {
+  if (!body) {
+    return null;
+  }
+  if (typeof body === "string") {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return body;
+    }
+  }
+  if (body instanceof FormData) {
+    return "[form-data]";
+  }
+  if (body instanceof URLSearchParams) {
+    return body.toString();
+  }
+  return "[binary]";
+}
+
+function headersToObject(headers: Headers): Record<string, string> {
+  return Object.fromEntries(headers.entries());
 }
