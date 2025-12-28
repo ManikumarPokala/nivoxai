@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
+
 BASE_URL="${BASE_URL:-http://localhost:3000}"
 COOKIE_JAR="$(mktemp)"
 HEADERS_FILE="$(mktemp)"
@@ -13,10 +17,10 @@ trap cleanup EXIT
 
 wait_for() {
   local url="$1"
-  local retries=40
+  local retries=90
   local delay=2
   for ((i=1; i<=retries; i++)); do
-    if curl -sf -o /dev/null "$url"; then
+    if curl -sf --max-time 3 -o /dev/null "$url"; then
       return 0
     fi
     sleep "$delay"
