@@ -154,13 +154,28 @@ jobs:
           services=("nivoxai-postgres" "nivoxai-backend-ai" "nivoxai-backend-api" "nivoxai-frontend")
           for svc in "${services[@]}"; do
             echo "Waiting for $svc to be healthy..."
-            for i in {1..60}; do
-              status=$(docker inspect -f '{{.State.Health.Status}}' "$svc" 2>/dev/null || echo "starting")
+            for i in {1..90}; do
+              status=$(docker inspect -f '{{.State.Health.Status}}' "$svc" 2>/dev/null || true)
+              state=$(docker inspect -f '{{.State.Status}}' "$svc" 2>/dev/null || true)
+              if [ "$state" != "running" ]; then
+                if [ "$i" -eq 90 ]; then
+                  echo "$svc is not running (state=$state)."
+                  docker ps
+                  docker logs "$svc" || true
+                  exit 1
+                fi
+                sleep 2
+                continue
+              fi
+              if [ -z "$status" ] || [ "$status" = "<no value>" ]; then
+                echo "No healthcheck for $svc; continuing."
+                break
+              fi
               if [ "$status" = "healthy" ]; then
                 echo "$svc is healthy."
                 break
               fi
-              if [ "$i" -eq 60 ]; then
+              if [ "$i" -eq 90 ]; then
                 echo "$svc did not become healthy in time."
                 docker ps
                 docker logs "$svc" || true

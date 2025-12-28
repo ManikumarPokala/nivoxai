@@ -15,6 +15,43 @@ cleanup() {
 }
 trap cleanup EXIT
 
+wait_for_container() {
+  local name="$1"
+  local retries=90
+  local delay=2
+  if ! command -v docker >/dev/null 2>&1; then
+    return 0
+  fi
+  for ((i=1; i<=retries; i++)); do
+    local status
+    local state
+    status=$(docker inspect -f '{{.State.Health.Status}}' "$name" 2>/dev/null || true)
+    state=$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || true)
+    if [ "$state" != "running" ]; then
+      if [ "$i" -eq "$retries" ]; then
+        echo "Container not running: $name (state=$state)"
+        docker logs "$name" || true
+        return 1
+      fi
+      sleep "$delay"
+      continue
+    fi
+    if [ -z "$status" ] || [ "$status" = "<no value>" ]; then
+      echo "No healthcheck for $name; continuing"
+      return 0
+    fi
+    if [ "$status" = "healthy" ]; then
+      return 0
+    fi
+    if [ "$i" -eq "$retries" ]; then
+      echo "Container not healthy: $name"
+      docker logs "$name" || true
+      return 1
+    fi
+    sleep "$delay"
+  done
+}
+
 wait_for() {
   local url="$1"
   local retries=90
@@ -71,6 +108,11 @@ for key in ("code", "message", "request_id"):
         raise SystemExit(f"Missing error.{key}")
 PY
 }
+
+echo "Waiting for containers..."
+wait_for_container "nivoxai-postgres"
+wait_for_container "nivoxai-backend-ai"
+wait_for_container "nivoxai-backend-api"
 
 echo "Waiting for frontend..."
 wait_for "$BASE_URL/demo"
