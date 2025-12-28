@@ -67,8 +67,6 @@ jobs:
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/manikumarpokala/nivoxai-backend-ai:${{ github.sha }}
             ghcr.io/manikumarpokala/nivoxai-backend-ai:latest
@@ -79,8 +77,6 @@ jobs:
           context: ./backend-api
           file: ./backend-api/Dockerfile
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/manikumarpokala/nivoxai-backend-api:${{ github.sha }}
             ghcr.io/manikumarpokala/nivoxai-backend-api:latest
@@ -93,8 +89,6 @@ jobs:
           push: true
           build-args: |
             GIT_SHA=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/manikumarpokala/nivoxai-frontend:${{ github.sha }}
             ghcr.io/manikumarpokala/nivoxai-frontend:latest
