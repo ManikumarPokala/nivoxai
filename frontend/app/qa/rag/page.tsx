@@ -15,6 +15,8 @@ type RagHit = {
   tenant_id?: string | null;
   source?: string | null;
   last_updated_at?: string | null;
+  freshness_days?: number | null;
+  freshness_score?: number | null;
   mode?: string | null;
   rerank?: boolean | null;
   candidate_k?: number | null;
@@ -135,6 +137,8 @@ export default function QARagPage() {
                   <span>tenant: {hit.tenant_id ?? "public"}</span>
                   <span>source: {hit.source ?? "n/a"}</span>
                   <span>last_updated: {hit.last_updated_at ?? "n/a"}</span>
+                  <span>freshness_days: {hit.freshness_days ?? "n/a"}</span>
+                  <span>freshness_score: {hit.freshness_score ?? "n/a"}</span>
                   <span>mode: {hit.mode ?? mode}</span>
                   <span>rerank: {String(hit.rerank ?? rerank)}</span>
                   <span>latency_ms: {hit.timings_ms ?? "n/a"}</span>

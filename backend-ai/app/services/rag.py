@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import time
 import urllib.request
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -127,6 +129,7 @@ KEYWORD_WEIGHT = float(os.environ.get("RAG_KEYWORD_WEIGHT", "0.4"))
 RERANK_MODE = os.environ.get("RAG_RERANK_MODE", "none")
 RERANK_MODEL = os.environ.get("RAG_RERANK_MODEL", "gpt-4o-mini")
 RERANK_TIMEOUT_S = float(os.environ.get("RAG_RERANK_TIMEOUT_S", "8"))
+FRESHNESS_TAU_DAYS = float(os.environ.get("RAG_FRESHNESS_TAU_DAYS", "30"))
 
 
 def search_influencers(
@@ -154,6 +157,11 @@ def search_influencers(
         combined_scores = keyword_scores
     else:
         combined_scores = _combine_scores(vector_scores, keyword_scores)
+
+    freshness_scores = _freshness_scores(filtered_docs)
+    combined_scores = [
+        score * freshness_scores[idx] for idx, score in enumerate(combined_scores)
+    ]
 
     ranked_indices = sorted(
         range(len(combined_scores)),
@@ -218,6 +226,27 @@ def _filter_docs(tenant_id: str | None) -> tuple[List[InfluencerDoc], List[int]]
             filtered.append(doc)
             indices.append(idx)
     return filtered, indices
+
+
+def _freshness_scores(docs: List[InfluencerDoc]) -> List[float]:
+    scores: List[float] = []
+    for doc in docs:
+        _, score = get_freshness_info(doc)
+        scores.append(score)
+    return scores
+
+
+def get_freshness_info(doc: InfluencerDoc) -> tuple[float | None, float]:
+    if not doc.last_updated_at:
+        return None, 1.0
+    try:
+        ts = datetime.fromisoformat(doc.last_updated_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None, 1.0
+    age_days = max(0.0, (datetime.now(timezone.utc) - ts).total_seconds() / 86400)
+    tau = max(1.0, FRESHNESS_TAU_DAYS)
+    score = math.exp(-age_days / tau)
+    return age_days, score
 
 
 def _normalize_scores(scores: List[float]) -> List[float]:

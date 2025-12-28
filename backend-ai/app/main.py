@@ -25,7 +25,7 @@ from app.models.schemas import (
 )
 from app.agents import runner
 from app.services import ingestion, observability
-from app.services.rag import search_influencers
+from app.services.rag import InfluencerDoc, get_freshness_info, search_influencers
 from app.services.recommender import compute_recommendations
 
 
@@ -232,6 +232,8 @@ class RagInfluencerHit(BaseModel):
     tenant_id: str | None = None
     source: str | None = None
     last_updated_at: str | None = None
+    freshness_days: float | None = None
+    freshness_score: float | None = None
     mode: str | None = None
     rerank: bool | None = None
     candidate_k: int | None = None
@@ -531,24 +533,28 @@ def rag_influencers(query: RagQuery, request: Request) -> list[RagInfluencerHit]
     )
     latency_ms = max(1, int(round((time.perf_counter() - start) * 1000)))
 
-    hits: list[RagInfluencerHit] = [
-        RagInfluencerHit(
-            id=doc.id,
-            name=doc.name,
-            bio=doc.bio,
-            category=doc.category,
-            region=doc.region,
-            score=round(score, 4),
-            tenant_id=doc.tenant_id,
-            source=doc.source,
-            last_updated_at=doc.last_updated_at,
-            mode=query.mode or os.environ.get("RAG_DEFAULT_MODE", "hybrid"),
-            rerank=query.rerank,
-            candidate_k=query.candidate_k,
-            timings_ms=latency_ms,
+    hits: list[RagInfluencerHit] = []
+    for doc, score in results:
+        freshness_days, freshness_score = get_freshness_info(doc)
+        hits.append(
+            RagInfluencerHit(
+                id=doc.id,
+                name=doc.name,
+                bio=doc.bio,
+                category=doc.category,
+                region=doc.region,
+                score=round(score, 4),
+                tenant_id=doc.tenant_id,
+                source=doc.source,
+                last_updated_at=doc.last_updated_at,
+                freshness_days=round(freshness_days, 2) if freshness_days is not None else None,
+                freshness_score=round(freshness_score, 4) if freshness_score is not None else None,
+                mode=query.mode or os.environ.get("RAG_DEFAULT_MODE", "hybrid"),
+                rerank=query.rerank,
+                candidate_k=query.candidate_k,
+                timings_ms=latency_ms,
+            )
         )
-        for doc, score in results
-    ]
     return hits
 
 
